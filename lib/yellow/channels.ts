@@ -7,7 +7,6 @@ import {
 	createCreateChannelMessage,
 	createGetChannelsMessage,
 	createResizeChannelMessage,
-	type RPCResponse,
 } from "@erc7824/nitrolite";
 import type { Hex } from "viem";
 import type { YellowClient } from "./client";
@@ -62,7 +61,7 @@ export async function createChannel(
 export async function allocateToChannel(
 	client: YellowClient,
 	params: AllocateParams,
-): Promise<RPCResponse> {
+): Promise<{ method: string; params: Record<string, unknown> }> {
 	const sessionSigner = client.getSessionSigner();
 	if (!sessionSigner) {
 		throw new Error("Client not authenticated");
@@ -98,7 +97,7 @@ export async function deallocateFromChannel(
 	client: YellowClient,
 	channelId: Hex,
 	amount: string,
-): Promise<RPCResponse> {
+): Promise<{ method: string; params: Record<string, unknown> }> {
 	const sessionSigner = client.getSessionSigner();
 	if (!sessionSigner) {
 		throw new Error("Client not authenticated");

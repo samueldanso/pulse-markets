@@ -31,7 +31,7 @@ export const SESSION_DURATION = 3600;
 
 /** App identification */
 export const APP_NAME = "PulseMarkets";
-export const AUTH_SCOPE = "pulse.markets";
+export const AUTH_SCOPE = "console";
 
 /** Challenge period for state channels (0 for instant settlement in hackathon) */
 export const CHALLENGE_PERIOD = 0;

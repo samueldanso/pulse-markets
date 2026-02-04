@@ -1,39 +1,45 @@
 /**
  * Yellow Network Client
- * Core WebSocket client for Yellow state channels
+ * Raw WebSocket client for Yellow state channels (sandbox-compatible)
  */
 
-import { Client } from "yellow-ts";
 import {
 	createAuthRequestMessage,
-	createAuthVerifyMessage,
-	createEIP712AuthMessageSigner,
+	createAuthVerifyMessageFromChallenge,
 	createECDSAMessageSigner,
+	createEIP712AuthMessageSigner,
 	createGetConfigMessage,
 	createGetLedgerBalancesMessage,
-	RPCMethod,
-	type RPCResponse,
 } from "@erc7824/nitrolite";
 import type { WalletClient } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import type {
-	YellowClientConfig,
-	SessionKey,
-	YellowConnectionStatus,
-	UnifiedBalance,
-} from "./types";
+import WebSocket from "ws";
+
+import { generateSessionKey, getSessionExpiry } from "./auth";
 import {
-	CLEARNODE_URL,
-	SESSION_DURATION,
 	APP_NAME,
 	AUTH_SCOPE,
+	CLEARNODE_SANDBOX_URL,
+	SESSION_DURATION,
 } from "./constants";
-import { generateSessionKey, getSessionExpiry } from "./auth";
+import type {
+	SessionKey,
+	UnifiedBalance,
+	YellowClientConfig,
+	YellowConnectionStatus,
+} from "./types";
+
+interface PendingRequest {
+	resolve: (value: unknown) => void;
+	reject: (reason: Error) => void;
+}
+
+type MessageListener = (method: string, params: Record<string, unknown>) => void;
 
 export class YellowClient {
-	private wsClient: Client | null = null;
+	private ws: WebSocket | null = null;
 	private sessionKey: SessionKey | null = null;
-	private sessionSigner: any = null; // MessageSigner type from SDK
+	private sessionSigner: ReturnType<typeof createECDSAMessageSigner> | null =
+		null;
 	private walletClient: WalletClient | null = null;
 	private connectionStatus: YellowConnectionStatus = {
 		connected: false,
@@ -42,40 +48,48 @@ export class YellowClient {
 		channelId: null,
 		unifiedBalance: "0",
 	};
+	private pendingRequests = new Map<number, PendingRequest>();
+	private listeners: MessageListener[] = [];
 
 	constructor(private config: YellowClientConfig) {}
 
-	/**
-	 * Connect to Yellow ClearNode and authenticate
-	 *
-	 * @param walletClient - Viem wallet client (from Privy or MetaMask)
-	 */
 	async connect(walletClient: WalletClient): Promise<void> {
 		this.walletClient = walletClient;
 
-		// Generate temporary session key
 		this.sessionKey = generateSessionKey();
 		this.sessionSigner = createECDSAMessageSigner(this.sessionKey.privateKey);
 
-		// Connect WebSocket
-		this.wsClient = new Client({
-			url: this.config.clearNodeUrl || CLEARNODE_URL,
+		const url = this.config.clearNodeUrl || CLEARNODE_SANDBOX_URL;
+
+		await new Promise<void>((resolve, reject) => {
+			this.ws = new WebSocket(url);
+
+			this.ws.on("open", () => {
+				this.connectionStatus.connected = true;
+				console.log("[Yellow] Connected to ClearNode");
+				resolve();
+			});
+
+			this.ws.on("error", (error) => {
+				reject(new Error(`WebSocket connection failed: ${error.message}`));
+			});
+
+			this.ws.on("message", (data) => {
+				this.handleRawMessage(data.toString());
+			});
+
+			this.ws.on("close", () => {
+				this.connectionStatus.connected = false;
+				this.connectionStatus.authenticated = false;
+				console.log("[Yellow] Disconnected");
+			});
 		});
 
-		await this.wsClient.connect();
-		this.connectionStatus.connected = true;
-
-		console.log("[Yellow] Connected to ClearNode");
-
-		// Start authentication flow
 		await this.authenticate();
 	}
 
-	/**
-	 * Authenticate with Yellow Network via EIP-712 challenge-response
-	 */
 	private async authenticate(): Promise<void> {
-		if (!this.wsClient || !this.sessionKey || !this.walletClient) {
+		if (!this.ws || !this.sessionKey || !this.walletClient) {
 			throw new Error("Client not initialized");
 		}
 
@@ -86,206 +100,256 @@ export class YellowClient {
 
 		const sessionExpiry = getSessionExpiry(SESSION_DURATION);
 
-		// Create auth request
-		const authMessage = await createAuthRequestMessage({
-			address: walletAddress,
+		const authParams = {
 			session_key: this.sessionKey.address,
-			allowances: [], // No spending limits for hackathon
+			allowances: [] as { asset: string; amount: string }[],
 			expires_at: BigInt(sessionExpiry),
 			scope: AUTH_SCOPE,
-			application: walletAddress,
-		});
-
-		// Send auth request
-		await this.wsClient.sendMessage(authMessage);
-
-		// Listen for auth challenge and complete flow
-		this.wsClient.listen(async (response: RPCResponse) => {
-			await this.handleMessage(response, {
-				walletAddress,
-				sessionExpiry,
-			});
-		});
-	}
-
-	/**
-	 * Handle incoming RPC messages from ClearNode
-	 */
-	private async handleMessage(
-		response: RPCResponse,
-		authContext?: { walletAddress: `0x${string}`; sessionExpiry: number },
-	): Promise<void> {
-		switch (response.method) {
-			case RPCMethod.AuthChallenge:
-				if (!authContext) return;
-				await this.handleAuthChallenge(response, authContext);
-				break;
-
-			case RPCMethod.AuthVerify:
-				this.handleAuthSuccess(response);
-				break;
-
-			case RPCMethod.BalanceUpdate:
-				this.handleBalanceUpdate(response);
-				break;
-
-			case RPCMethod.ChannelsUpdate:
-				this.handleChannelsUpdate(response);
-				break;
-
-			case RPCMethod.Error:
-				console.error("[Yellow] RPC Error:", response.params);
-				break;
-
-			default:
-				// Log other messages for debugging
-				console.log(`[Yellow] RPC: ${response.method}`, response.params);
-		}
-	}
-
-	/**
-	 * Handle auth challenge - sign with main wallet via EIP-712
-	 */
-	private async handleAuthChallenge(
-		response: RPCResponse,
-		context: { walletAddress: `0x${string}`; sessionExpiry: number },
-	): Promise<void> {
-		if (!this.walletClient || !this.sessionKey || !this.wsClient) return;
-
-		console.log("[Yellow] Received auth challenge, signing...");
-
-		const authParams = {
-			wallet: context.walletAddress,
-			session_key: this.sessionKey.address,
-			scope: AUTH_SCOPE,
-			expires_at: BigInt(context.sessionExpiry),
-			allowances: [],
-			application: context.walletAddress,
 		};
 
-		// Create EIP-712 signer
-		const eip712Signer = createEIP712AuthMessageSigner(
-			this.walletClient,
-			authParams,
-			{ name: APP_NAME },
-		);
+		const authMessage = await createAuthRequestMessage({
+			address: walletAddress,
+			application: APP_NAME,
+			...authParams,
+		});
 
-		// Create and send auth verify message
-		const verifyMessage = await createAuthVerifyMessage(
-			eip712Signer,
-			response as any,
-		);
-		await this.wsClient.sendMessage(verifyMessage);
-	}
+		return new Promise<void>((resolve, reject) => {
+			const timeout = setTimeout(() => {
+				reject(new Error("Authentication timed out"));
+			}, 15000);
 
-	/**
-	 * Handle successful authentication
-	 */
-	private handleAuthSuccess(response: RPCResponse): void {
-		console.log("[Yellow] Authenticated successfully");
+			const originalHandler = this.handleRawMessage.bind(this);
 
-		if (!this.sessionKey) return;
+			this.handleRawMessage = (data: string) => {
+				const response = JSON.parse(data);
 
-		this.connectionStatus.authenticated = true;
-		this.connectionStatus.sessionExpiry = getSessionExpiry(SESSION_DURATION);
+				if (response.res?.[1] === "auth_challenge") {
+					const challenge = response.res[2].challenge_message;
+					console.log("[Yellow] Received auth challenge");
 
-		// Fetch initial balances
-		this.fetchLedgerBalances().catch((error) => {
-			console.error("[Yellow] Failed to fetch balances:", error);
+					if (!this.walletClient || !this.ws) return;
+
+					const eip712Signer = createEIP712AuthMessageSigner(
+						this.walletClient,
+						authParams,
+						{ name: APP_NAME },
+					);
+
+					const ws = this.ws;
+					createAuthVerifyMessageFromChallenge(eip712Signer, challenge).then(
+						(verifyMsg) => {
+							ws.send(verifyMsg);
+							console.log("[Yellow] Sent auth verify");
+						},
+					);
+					return;
+				}
+
+				if (response.res?.[1] === "auth_verify") {
+					clearTimeout(timeout);
+					this.connectionStatus.authenticated = true;
+					this.connectionStatus.sessionExpiry = sessionExpiry;
+					console.log("[Yellow] Authenticated successfully");
+
+					// Restore normal message handler
+					this.handleRawMessage = originalHandler;
+					resolve();
+
+					// Fetch initial balances
+					this.fetchLedgerBalances().catch((error) => {
+						console.error("[Yellow] Failed to fetch balances:", error);
+					});
+					return;
+				}
+
+				if (response.error || response.res?.[1] === "error") {
+					const errorData = response.error || response.res?.[2];
+					clearTimeout(timeout);
+					this.handleRawMessage = originalHandler;
+					reject(
+						new Error(
+							`Auth failed: ${JSON.stringify(errorData)}`,
+						),
+					);
+					return;
+				}
+
+				// Pass other messages (assets, channels, balance) to normal handler
+				originalHandler(data);
+			};
+
+			if (!this.ws) return reject(new Error("WebSocket not connected"));
+			this.ws.send(authMessage);
+			console.log("[Yellow] Sent auth request");
 		});
 	}
 
 	/**
-	 * Handle balance updates from ClearNode
+	 * Handle raw WebSocket messages after authentication
+	 * Routes responses to pending promises or event listeners
 	 */
-	private handleBalanceUpdate(response: RPCResponse): void {
-		const params = response.params as any;
-		const balances = params?.balances || [];
-		console.log("[Yellow] Balance update:", balances);
+	private handleRawMessage(data: string): void {
+		try {
+			const response = JSON.parse(data);
 
-		// Find USDC balance
-		const usdcBalance = balances.find((b: UnifiedBalance) => b.asset === "usdc");
-		if (usdcBalance) {
-			this.connectionStatus.unifiedBalance = usdcBalance.amount;
+			// Response to a pending request (matched by ID)
+			if (response.res) {
+				const requestId = response.res[0];
+				const method = response.res[1];
+				const params = response.res[2] || {};
+
+				const pending = this.pendingRequests.get(requestId);
+				if (pending) {
+					this.pendingRequests.delete(requestId);
+					pending.resolve({ method, params });
+					return;
+				}
+
+				// Unsolicited event — notify listeners
+				this.handleEvent(method, params);
+			}
+
+			if (response.error) {
+				const requestId = response.error[0];
+				const pending = this.pendingRequests.get(requestId);
+				if (pending) {
+					this.pendingRequests.delete(requestId);
+					pending.reject(
+						new Error(JSON.stringify(response.error)),
+					);
+				}
+			}
+		} catch {
+			console.error("[Yellow] Failed to parse message:", data.substring(0, 200));
+		}
+	}
+
+	private handleEvent(method: string, params: Record<string, unknown>): void {
+		if (method === "channels") {
+			const channels = (params as { channels?: { channel_id: string }[] })
+				.channels;
+			if (channels && channels.length > 0) {
+				this.connectionStatus.channelId =
+					channels[0].channel_id as `0x${string}`;
+			}
+		}
+
+		if (method === "balance" || method === "balance_update") {
+			const balances = (params as { ledger_balances?: UnifiedBalance[] })
+				.ledger_balances;
+			if (balances) {
+				const usdcBalance = balances.find(
+					(b) => b.asset === "usdc" || b.asset === "ytest.usd",
+				);
+				if (usdcBalance) {
+					this.connectionStatus.unifiedBalance = usdcBalance.amount;
+				}
+			}
+		}
+
+		for (const listener of this.listeners) {
+			listener(method, params);
 		}
 	}
 
 	/**
-	 * Handle channel updates from ClearNode
+	 * Send an RPC message and wait for the response
 	 */
-	private handleChannelsUpdate(response: RPCResponse): void {
-		const params = response.params as any;
-		const channels = params?.channels || [];
-		console.log("[Yellow] Channels update:", channels);
-
-		// TODO: Store channel info for later use
-		if (channels.length > 0) {
-			this.connectionStatus.channelId = channels[0].channel_id;
-		}
-	}
-
-	/**
-	 * Fetch unified ledger balances
-	 */
-	async fetchLedgerBalances(): Promise<UnifiedBalance[]> {
-		if (!this.wsClient || !this.sessionSigner) {
+	async sendMessage(message: string): Promise<{ method: string; params: Record<string, unknown> }> {
+		if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
 			throw new Error("Client not connected");
 		}
 
-		const balanceMessage = await createGetLedgerBalancesMessage(
-			this.sessionSigner,
-		);
-		const response = await this.wsClient.sendMessage(balanceMessage);
+		const parsed = JSON.parse(message);
+		const requestId = parsed.req?.[0];
 
-		return response.params?.balances || [];
+		if (requestId === undefined) {
+			this.ws.send(message);
+			return { method: "unknown", params: {} };
+		}
+
+		return new Promise((resolve, reject) => {
+			const timeout = setTimeout(() => {
+				this.pendingRequests.delete(requestId);
+				reject(new Error(`Request ${requestId} timed out`));
+			}, 10000);
+
+			this.pendingRequests.set(requestId, {
+				resolve: (value) => {
+					clearTimeout(timeout);
+					resolve(value as { method: string; params: Record<string, unknown> });
+				},
+				reject: (error) => {
+					clearTimeout(timeout);
+					reject(error);
+				},
+			});
+
+			if (!this.ws) return reject(new Error("WebSocket closed"));
+			this.ws.send(message);
+		});
 	}
 
-	/**
-	 * Fetch Yellow Network configuration (custody/adjudicator addresses)
-	 */
-	async fetchConfig(): Promise<any> {
-		if (!this.wsClient || !this.sessionSigner) {
+	async fetchLedgerBalances(): Promise<UnifiedBalance[]> {
+		if (!this.ws || !this.sessionSigner) {
+			throw new Error("Client not connected");
+		}
+
+		const walletAddress = this.walletClient?.account?.address;
+		const balanceMessage = await createGetLedgerBalancesMessage(
+			this.sessionSigner,
+			walletAddress,
+		);
+		const response = await this.sendMessage(balanceMessage);
+
+		const balances =
+			(response.params as { ledger_balances?: UnifiedBalance[] })
+				?.ledger_balances || [];
+
+		// Update status with latest balance
+		const primaryBalance = balances.find(
+			(b) => b.asset === "usdc" || b.asset === "ytest.usd",
+		);
+		if (primaryBalance) {
+			this.connectionStatus.unifiedBalance = primaryBalance.amount;
+		}
+
+		return balances;
+	}
+
+	async fetchConfig(): Promise<Record<string, unknown>> {
+		if (!this.ws || !this.sessionSigner) {
 			throw new Error("Client not connected");
 		}
 
 		const configMessage = await createGetConfigMessage(this.sessionSigner);
-		const response = (await this.wsClient.sendMessage(configMessage)) as any;
-
+		const response = await this.sendMessage(configMessage);
 		return response.params;
 	}
 
 	/**
-	 * Send a raw RPC message
+	 * Register a listener for unsolicited events
 	 */
-	async sendMessage(message: string): Promise<any> {
-		if (!this.wsClient) {
-			throw new Error("Client not connected");
-		}
-
-		return await this.wsClient.sendMessage(message);
+	onEvent(listener: MessageListener): void {
+		this.listeners.push(listener);
 	}
 
-	/**
-	 * Get current connection status
-	 */
 	getStatus(): YellowConnectionStatus {
 		return { ...this.connectionStatus };
 	}
 
-	/**
-	 * Get session signer for signing RPC messages
-	 */
 	getSessionSigner() {
 		return this.sessionSigner;
 	}
 
-	/**
-	 * Disconnect from Yellow Network
-	 */
+	getWalletAddress(): string | undefined {
+		return this.walletClient?.account?.address;
+	}
+
 	async disconnect(): Promise<void> {
-		if (this.wsClient) {
-			await this.wsClient.disconnect();
-			this.wsClient = null;
+		if (this.ws) {
+			this.ws.close();
+			this.ws = null;
 		}
 
 		this.connectionStatus = {
@@ -295,7 +359,5 @@ export class YellowClient {
 			channelId: null,
 			unifiedBalance: "0",
 		};
-
-		console.log("[Yellow] Disconnected");
 	}
 }
