@@ -1,6 +1,6 @@
 export type MarketCategory = "sentiment" | "narrative" | "viral";
-export type MarketStatus = "open" | "closed" | "settling" | "resolved";
-export type BetSide = "YES" | "NO";
+export type MarketStatus = "open" | "locked" | "settling" | "closed";
+export type BetSide = "UP" | "DOWN";
 export type ThresholdType = "percentage" | "absolute";
 
 export interface Market {
@@ -17,9 +17,21 @@ export interface Market {
   threshold: number;
   thresholdType: ThresholdType;
 
-  yesPool: number;
-  noPool: number;
+  // Yellow session tracking
+  sessionId?: string;
 
+  // Pool participants (addresses)
+  upParticipants: string[];
+  upBets: bigint[];
+  downParticipants: string[];
+  downBets: bigint[];
+
+  // Computed pool totals
+  upPool: bigint;
+  downPool: bigint;
+  totalPot: bigint;
+
+  // Settlement
   result?: BetSide;
   finalValue?: number;
   aiReasoning?: string;
