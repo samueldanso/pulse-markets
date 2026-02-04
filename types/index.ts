@@ -71,5 +71,4 @@ export interface YellowChannelState {
   channelId: string | null;
   isOpen: boolean;
   balance: number;
-  isSimulated: boolean;
 }
