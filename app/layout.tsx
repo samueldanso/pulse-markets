@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "./globals.css";
+
+import { Providers } from "@/components/providers/privy-provider";
+import { Toaster } from "@/components/ui/sonner";
 import { env } from "@/env";
+
+import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -53,7 +57,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={inter.variable}>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <Providers>
+          {children}
+          <Toaster position="top-right" />
+        </Providers>
+      </body>
     </html>
   );
 }

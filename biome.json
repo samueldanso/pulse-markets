@@ -24,6 +24,10 @@
       "complexity": {
         "noImportantStyles": "off"
       }
+    },
+    "domains": {
+      "next": "recommended",
+      "react": "recommended"
     }
   },
   "javascript": {
