@@ -62,7 +62,7 @@ async function generateReasoning(
 	try {
 		const { text } = await generateText({
 			model: openai("gpt-4o-mini"),
-			maxTokens: 200,
+			maxOutputTokens: 200,
 			prompt: `You are an AI settlement agent for a prediction market about attention/sentiment.
 
 Market: "${market.question}"
