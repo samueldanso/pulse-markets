@@ -1,36 +1,40 @@
-# Task Plan: Yellow SDK Server Integration + Core Trading UI
+# Task Plan: Terminology & Documentation Cleanup
 
 ## Goal
-Wire existing Yellow SDK code into working server + UI: ClearNode connection → market sessions → bet placement → AI settlement → frontend
+Replace "house wallet", "app-as-house", and other misleading terms with neutral operator/coordinator language across all docs, code, and env vars.
 
 ## Features / Steps
-- [x] Step 0: Validate ClearNode connection (test script)
-- [x] Step 1: Update YellowClient + sandbox setup
-- [x] Step 2: Yellow Service singleton (server/services/yellow-service.ts)
-- [x] Step 3: Attention data service (server/services/attention.ts)
-- [x] Step 4: AI settlement service (server/services/settlement.ts)
-- [x] Step 5: Wire API routes (markets + settle)
-- [x] Step 6: Markets list page + market card component
-- [x] Step 7: Market detail + betting page
-- [x] Step 8: App navigation
+- [x] Step 1: PRD.md — Rewrite market model section, remove app-as-house/order-based refs
+- [x] Step 2: Architecture wording — Replace "house wallet" in code + env vars
+- [x] Step 3: Comparison section — Fix PRD comparison table (Polymarket/Trendle/Pulse)
+- [x] Step 4: Docs/README/comments alignment — Audit and replace misleading terms
 
 ## Current
 **Working on**: Complete
 **Status**: all steps done
 
 ## Decisions
-- Server-managed Yellow: house wallet connects to ClearNode, manages all sessions
-- Users interact via REST API (no browser WebSocket needed)
-- Sandbox ClearNode (`wss://clearnet-sandbox.yellow.com/ws`) for dev
-- Raw WebSocket instead of yellow-ts Client (fixes auth timing issues)
-- `application: APP_NAME` (not wallet address) in auth request
-- `scope: "console"` for ClearNode auth
-- Faucet tokens (10M ytest.usd) for sandbox testing
+- `HOUSE_WALLET_*` env vars → `PRIVATE_KEY` / `WALLET_ADDRESS` (matches Yellow getting-started pattern)
+- `houseAddress` → `operatorAddress` in code (types.ts, sessions.ts, yellow-service.ts, scripts)
+- `houseFeePercent` → `protocolFeePercent` (clearer semantics)
+- `houseWeight` → `operatorWeight`
+- "App-as-House" section → "Pooled Binary Markets" section in PRD
+- Added platform comparison table (Polymarket vs Trendle vs Pulse)
+- Funds are user-attributed, locked by Yellow contracts, settled trustlessly
 
-## Key Fixes
-- Auth "invalid challenge or signature": Fixed by switching to sandbox URL + correct auth params
-- yellow-ts Client message consumption: Fixed by using raw WebSocket
-- AI SDK v6: Uses `maxOutputTokens` not `maxTokens`
+## Files Changed
+- `PRD.md` — Market model rewrite, comparison table, YES/NO→UP/DOWN, env vars
+- `CLAUDE.md` — env var refs, removed app-as-house language
+- `docs/yellow-integration.md` — all house→operator, houseFee→protocolFee
+- `docs/testing.md` — env var ref
+- `todo.md` — removed app-as-house language
+- `.env`, `.env.example` — PRIVATE_KEY / WALLET_ADDRESS
+- `env.ts` — schema + runtimeEnv updated
+- `lib/yellow/types.ts` — operatorAddress, operatorPrivateKey
+- `lib/yellow/sessions.ts` — operatorAddress, protocolFeePercent, operatorWeight
+- `lib/yellow/__tests__/sessions.test.ts` — protocol fee in test names
+- `server/services/yellow-service.ts` — process.env.PRIVATE_KEY, operatorAddress
+- `scripts/test-*.ts` — process.env.PRIVATE_KEY, operator wallet logs
 
 ## Errors
-(all resolved)
+(none)

@@ -3,65 +3,59 @@
  * Exports all Yellow state channel functionality
  */
 
-// Client
-export { YellowClient } from "./client";
-
 // Auth
 export { generateSessionKey, getSessionExpiry } from "./auth";
-
-// Deposit
-export {
-	depositToCustody,
-	getWalletUSDCBalance,
-	getCustodyBalance,
-} from "./deposit";
-
 // Channels
 export {
-	createChannel,
-	allocateToChannel,
-	deallocateFromChannel,
-	getChannels,
-	getOrCreateChannel,
+  allocateToChannel,
+  createChannel,
+  deallocateFromChannel,
+  getChannels,
+  getOrCreateChannel,
 } from "./channels";
-
-// Sessions (Pool-based Markets)
-export {
-	createMarketSession,
-	addBetToMarket,
-	settleMarketSession,
-	calculateProportionalDistribution,
-} from "./sessions";
-
-// Types
-export type {
-	SessionKey,
-	YellowClientConfig,
-	ChannelInfo,
-	UnifiedBalance,
-	MarketPool,
-	MarketSession,
-	PoolBetParams,
-	ProportionalDistribution,
-	SettlementOutcome,
-	YellowConnectionStatus,
-	DepositResult,
-	AllocateParams,
-} from "./types";
-
+// Client
+export { YellowClient } from "./client";
 // Constants
 export {
-	CLEARNODE_URL,
-	CLEARNODE_SANDBOX_URL,
-	YELLOW_CHAIN,
-	YELLOW_CHAIN_ID,
-	USDC_ADDRESS,
-	USDC_DECIMALS,
-	PROTOCOL_VERSION,
-	SESSION_DURATION,
-	APP_NAME,
-	AUTH_SCOPE,
-	CHALLENGE_PERIOD,
-	BASE_CUSTODY_ADDRESS,
-	BASE_ADJUDICATOR_ADDRESS,
+  APP_NAME,
+  AUTH_SCOPE,
+  BASE_ADJUDICATOR_ADDRESS,
+  BASE_CUSTODY_ADDRESS,
+  CHALLENGE_PERIOD,
+  CLEARNODE_SANDBOX_URL,
+  CLEARNODE_URL,
+  PROTOCOL_VERSION,
+  SESSION_DURATION,
+  USDC_ADDRESS,
+  USDC_DECIMALS,
+  YELLOW_CHAIN,
+  YELLOW_CHAIN_ID,
 } from "./constants";
+// Deposit
+export {
+  depositToCustody,
+  getCustodyBalance,
+  getWalletUSDCBalance,
+} from "./deposit";
+// Sessions (Pool-based Markets)
+export {
+  addBetToMarket,
+  calculateProportionalDistribution,
+  createMarketSession,
+  settleMarketSession,
+} from "./sessions";
+// Types
+export type {
+  AllocateParams,
+  ChannelInfo,
+  DepositResult,
+  MarketPool,
+  MarketSession,
+  PoolBetParams,
+  ProportionalDistribution,
+  SessionKey,
+  SettlementOutcome,
+  UnifiedBalance,
+  YellowClientConfig,
+  YellowConnectionStatus,
+} from "./types";

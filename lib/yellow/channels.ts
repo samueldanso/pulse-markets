@@ -4,14 +4,14 @@
  */
 
 import {
-	createCreateChannelMessage,
-	createGetChannelsMessage,
-	createResizeChannelMessage,
+  createCreateChannelMessage,
+  createGetChannelsMessage,
+  createResizeChannelMessage,
 } from "@erc7824/nitrolite";
 import type { Hex } from "viem";
 import type { YellowClient } from "./client";
-import type { ChannelInfo, AllocateParams } from "./types";
-import { YELLOW_CHAIN_ID, USDC_ADDRESS } from "./constants";
+import { USDC_ADDRESS, YELLOW_CHAIN_ID } from "./constants";
+import type { AllocateParams, ChannelInfo } from "./types";
 
 /**
  * Create a new channel on Yellow Network
@@ -22,32 +22,32 @@ import { YELLOW_CHAIN_ID, USDC_ADDRESS } from "./constants";
  * @returns Channel ID
  */
 export async function createChannel(
-	client: YellowClient,
-	asset: string = USDC_ADDRESS,
-	chainId: number = YELLOW_CHAIN_ID,
+  client: YellowClient,
+  asset: string = USDC_ADDRESS,
+  chainId: number = YELLOW_CHAIN_ID,
 ): Promise<Hex> {
-	const sessionSigner = client.getSessionSigner();
-	if (!sessionSigner) {
-		throw new Error("Client not authenticated");
-	}
+  const sessionSigner = client.getSessionSigner();
+  if (!sessionSigner) {
+    throw new Error("Client not authenticated");
+  }
 
-	console.log(`[Yellow] Creating channel for ${asset} on chain ${chainId}...`);
+  console.log(`[Yellow] Creating channel for ${asset} on chain ${chainId}...`);
 
-	const createMessage = await createCreateChannelMessage(sessionSigner, {
-		chain_id: chainId,
-		token: asset as `0x${string}`,
-	});
+  const createMessage = await createCreateChannelMessage(sessionSigner, {
+    chain_id: chainId,
+    token: asset as `0x${string}`,
+  });
 
-	const response = (await client.sendMessage(createMessage)) as any;
+  const response = (await client.sendMessage(createMessage)) as any;
 
-	const channelId = response.params?.channel_id;
-	if (!channelId) {
-		throw new Error("Failed to create channel - no channel_id in response");
-	}
+  const channelId = response.params?.channel_id;
+  if (!channelId) {
+    throw new Error("Failed to create channel - no channel_id in response");
+  }
 
-	console.log(`[Yellow] Channel created: ${channelId}`);
+  console.log(`[Yellow] Channel created: ${channelId}`);
 
-	return channelId as Hex;
+  return channelId as Hex;
 }
 
 /**
@@ -59,30 +59,30 @@ export async function createChannel(
  * @returns RPC response
  */
 export async function allocateToChannel(
-	client: YellowClient,
-	params: AllocateParams,
+  client: YellowClient,
+  params: AllocateParams,
 ): Promise<{ method: string; params: Record<string, unknown> }> {
-	const sessionSigner = client.getSessionSigner();
-	if (!sessionSigner) {
-		throw new Error("Client not authenticated");
-	}
+  const sessionSigner = client.getSessionSigner();
+  if (!sessionSigner) {
+    throw new Error("Client not authenticated");
+  }
 
-	console.log(
-		`[Yellow] Allocating ${params.amount} to channel ${params.channelId}...`,
-	);
+  console.log(
+    `[Yellow] Allocating ${params.amount} to channel ${params.channelId}...`,
+  );
 
-	// Use resize_channel with allocate_amount (not resize_amount!)
-	const resizeMessage = await createResizeChannelMessage(sessionSigner, {
-		channel_id: params.channelId,
-		allocate_amount: BigInt(params.amount), // Move from Unified Balance → Channel
-		funds_destination: params.channelId, // Destination address
-	});
+  // Use resize_channel with allocate_amount (not resize_amount!)
+  const resizeMessage = await createResizeChannelMessage(sessionSigner, {
+    channel_id: params.channelId,
+    allocate_amount: BigInt(params.amount), // Move from Unified Balance → Channel
+    funds_destination: params.channelId, // Destination address
+  });
 
-	const response = await client.sendMessage(resizeMessage);
+  const response = await client.sendMessage(resizeMessage);
 
-	console.log(`[Yellow] Allocated successfully`);
+  console.log(`[Yellow] Allocated successfully`);
 
-	return response;
+  return response;
 }
 
 /**
@@ -94,32 +94,32 @@ export async function allocateToChannel(
  * @returns RPC response
  */
 export async function deallocateFromChannel(
-	client: YellowClient,
-	channelId: Hex,
-	amount: string,
+  client: YellowClient,
+  channelId: Hex,
+  amount: string,
 ): Promise<{ method: string; params: Record<string, unknown> }> {
-	const sessionSigner = client.getSessionSigner();
-	if (!sessionSigner) {
-		throw new Error("Client not authenticated");
-	}
+  const sessionSigner = client.getSessionSigner();
+  if (!sessionSigner) {
+    throw new Error("Client not authenticated");
+  }
 
-	console.log(`[Yellow] Deallocating ${amount} from channel ${channelId}...`);
+  console.log(`[Yellow] Deallocating ${amount} from channel ${channelId}...`);
 
-	// TODO: Implement proper deallocate flow
-	// For now, use allocate_amount with negative value or separate RPC call
-	console.warn("[Yellow] Deallocation not yet fully implemented");
+  // TODO: Implement proper deallocate flow
+  // For now, use allocate_amount with negative value or separate RPC call
+  console.warn("[Yellow] Deallocation not yet fully implemented");
 
-	const resizeMessage = await createResizeChannelMessage(sessionSigner, {
-		channel_id: channelId,
-		allocate_amount: BigInt(0), // Placeholder
-		funds_destination: channelId,
-	});
+  const resizeMessage = await createResizeChannelMessage(sessionSigner, {
+    channel_id: channelId,
+    allocate_amount: BigInt(0), // Placeholder
+    funds_destination: channelId,
+  });
 
-	const response = await client.sendMessage(resizeMessage);
+  const response = await client.sendMessage(resizeMessage);
 
-	console.log(`[Yellow] Deallocated successfully`);
+  console.log(`[Yellow] Deallocated successfully`);
 
-	return response;
+  return response;
 }
 
 /**
@@ -129,27 +129,27 @@ export async function deallocateFromChannel(
  * @returns List of channels
  */
 export async function getChannels(
-	client: YellowClient,
+  client: YellowClient,
 ): Promise<ChannelInfo[]> {
-	const sessionSigner = client.getSessionSigner();
-	if (!sessionSigner) {
-		throw new Error("Client not authenticated");
-	}
+  const sessionSigner = client.getSessionSigner();
+  if (!sessionSigner) {
+    throw new Error("Client not authenticated");
+  }
 
-	const channelsMessage = await createGetChannelsMessage(sessionSigner);
-	const response = (await client.sendMessage(channelsMessage)) as any;
+  const channelsMessage = await createGetChannelsMessage(sessionSigner);
+  const response = (await client.sendMessage(channelsMessage)) as any;
 
-	const channels = response.params?.channels || [];
+  const channels = response.params?.channels || [];
 
-	// Transform to our ChannelInfo format
-	return channels.map((ch: any) => ({
-		channelId: ch.channel_id,
-		chainId: ch.chain_id,
-		asset: ch.asset,
-		balance: ch.balance || "0",
-		status: ch.status || "open",
-		participants: ch.participants || [],
-	}));
+  // Transform to our ChannelInfo format
+  return channels.map((ch: any) => ({
+    channelId: ch.channel_id,
+    chainId: ch.chain_id,
+    asset: ch.asset,
+    balance: ch.balance || "0",
+    status: ch.status || "open",
+    participants: ch.participants || [],
+  }));
 }
 
 /**
@@ -159,26 +159,24 @@ export async function getChannels(
  * @param client - YellowClient instance
  * @returns Channel ID
  */
-export async function getOrCreateChannel(
-	client: YellowClient,
-): Promise<Hex> {
-	// Check for existing channels
-	const channels = await getChannels(client);
+export async function getOrCreateChannel(client: YellowClient): Promise<Hex> {
+  // Check for existing channels
+  const channels = await getChannels(client);
 
-	// Find USDC channel on Base
-	const usdcChannel = channels.find(
-		(ch) =>
-			ch.chainId === YELLOW_CHAIN_ID &&
-			ch.asset.toLowerCase() === USDC_ADDRESS.toLowerCase() &&
-			ch.status === "open",
-	);
+  // Find USDC channel on Base
+  const usdcChannel = channels.find(
+    (ch) =>
+      ch.chainId === YELLOW_CHAIN_ID &&
+      ch.asset.toLowerCase() === USDC_ADDRESS.toLowerCase() &&
+      ch.status === "open",
+  );
 
-	if (usdcChannel) {
-		console.log(`[Yellow] Using existing channel: ${usdcChannel.channelId}`);
-		return usdcChannel.channelId;
-	}
+  if (usdcChannel) {
+    console.log(`[Yellow] Using existing channel: ${usdcChannel.channelId}`);
+    return usdcChannel.channelId;
+  }
 
-	// Create new channel
-	console.log("[Yellow] No existing channel found, creating new one...");
-	return await createChannel(client);
+  // Create new channel
+  console.log("[Yellow] No existing channel found, creating new one...");
+  return await createChannel(client);
 }

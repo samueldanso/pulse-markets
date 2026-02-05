@@ -13,13 +13,13 @@ import type { SessionKey } from "./types";
  * @returns Session key pair (private key + address)
  */
 export function generateSessionKey(): SessionKey {
-	const privateKey = generatePrivateKey();
-	const account = privateKeyToAccount(privateKey);
+  const privateKey = generatePrivateKey();
+  const account = privateKeyToAccount(privateKey);
 
-	return {
-		privateKey,
-		address: account.address,
-	};
+  return {
+    privateKey,
+    address: account.address,
+  };
 }
 
 /**
@@ -29,5 +29,5 @@ export function generateSessionKey(): SessionKey {
  * @returns Unix timestamp when session expires
  */
 export function getSessionExpiry(durationSeconds = 3600): number {
-	return Math.floor(Date.now() / 1000) + durationSeconds;
+  return Math.floor(Date.now() / 1000) + durationSeconds;
 }

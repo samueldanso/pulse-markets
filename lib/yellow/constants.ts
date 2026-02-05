@@ -16,7 +16,8 @@ export const YELLOW_CHAIN = base;
 export const YELLOW_CHAIN_ID = base.id; // 8453
 
 /** USDC contract address on Base mainnet */
-export const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
+export const USDC_ADDRESS =
+  "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
 
 /** USDC decimals */
 export const USDC_DECIMALS = 6;
@@ -42,6 +43,6 @@ export const CHALLENGE_PERIOD = 0;
  * Reference: https://docs.yellow.org/docs/learn/getting-started/quickstart/
  */
 export const BASE_CUSTODY_ADDRESS =
-	"0x490fb189DdE3a01B00be9BA5F41e3447FbC838b6" as const;
+  "0x490fb189DdE3a01B00be9BA5F41e3447FbC838b6" as const;
 export const BASE_ADJUDICATOR_ADDRESS =
-	"0x7de4A0736Cf5740fD3Ca2F2e9cc85c9AC223eF0C" as const;
+  "0x7de4A0736Cf5740fD3Ca2F2e9cc85c9AC223eF0C" as const;

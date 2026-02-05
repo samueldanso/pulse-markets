@@ -15,11 +15,11 @@ app.route("/markets", marketRoutes);
 app.route("/settle", settleRoutes);
 
 app.get("/health", (c) =>
-	c.json({
-		status: "ok",
-		timestamp: Date.now(),
-		yellow: yellowService.getStatus(),
-	}),
+  c.json({
+    status: "ok",
+    timestamp: Date.now(),
+    yellow: yellowService.getStatus(),
+  }),
 );
 
 export default app;
