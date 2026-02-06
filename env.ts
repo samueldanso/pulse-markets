@@ -16,6 +16,8 @@ export const env = createEnv({
     WALLET_ADDRESS: z.string().optional(),
     OPENAI_API_KEY: z.string().optional(),
     LUNARCRUSH_API_KEY: z.string().optional(),
+    PINATA_JWT: z.string().optional(),
+    AGENT_ID: z.string().optional(),
   },
   runtimeEnv: {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
@@ -29,5 +31,7 @@ export const env = createEnv({
     WALLET_ADDRESS: process.env.WALLET_ADDRESS,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     LUNARCRUSH_API_KEY: process.env.LUNARCRUSH_API_KEY,
+    PINATA_JWT: process.env.PINATA_JWT,
+    AGENT_ID: process.env.AGENT_ID,
   },
 });

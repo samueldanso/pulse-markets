@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 
 import { getMarketById } from "@/data/markets";
+import { agentIdentityService } from "@/server/services/agent-identity";
 import { getAttentionValue } from "@/server/services/attention";
 import { settleMarket } from "@/server/services/settlement";
 import { yellowService } from "@/server/services/yellow-service";
@@ -45,6 +46,11 @@ settleRoutes.post("/:marketId", async (c) => {
       settlement.attentionData,
     );
 
+    const agentProof = await agentIdentityService.getAgentProof(
+      "settlement",
+      market.topic,
+    );
+
     return c.json({
       success: true,
       marketId,
@@ -60,6 +66,7 @@ settleRoutes.post("/:marketId", async (c) => {
         payout: d.payoutAmount.toString(),
         profitPercent: d.profitPercent,
       })),
+      agent: agentProof,
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Unknown error";
