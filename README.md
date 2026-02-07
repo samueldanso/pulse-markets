@@ -103,14 +103,6 @@ PulseMarkets introduces a new market primitive: **attention prediction markets**
 └─────────────────────────────┘
 ```
 
-### Architecture Components
-
-| Component      | Description                                   |
-| -------------- | --------------------------------------------- |
-| **Asset**      | Attention / narrative momentum                |
-| **Execution**  | Instant & gasless (Yellow State channels SDK) |
-| **Settlement** | AI agent with ERC-8004 on-chain identity      |
-
 ---
 
 ## User Flow
@@ -307,7 +299,3 @@ MIT
 - **Attention as a Market Primitive** — First platform to enable real-time trading on social attention metrics instead of traditional binary outcomes
 - **Zero-Friction Execution** — Yellow Network state channels eliminate gas fees and enable high-frequency micro-betting with instant confirmation
 - **Transparent AI Settlement** — ERC-8004 autonomous agents provide verifiable, on-chain settlement with transparent reasoning and reputation scoring
-
-```
-
-```
