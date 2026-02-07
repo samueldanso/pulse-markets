@@ -1,8 +1,10 @@
 "use client";
 
 import { usePrivy } from "@privy-io/react-auth";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { parseUnits } from "viem";
+import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,12 +18,105 @@ import {
 import { Input } from "@/components/ui/input";
 import { useUserStore } from "@/stores/user-store";
 
+const USDC_DECIMALS = 6;
+
+const ERC20_APPROVE_ABI = [
+  {
+    name: "approve",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [{ type: "bool" }],
+  },
+] as const;
+
+const CUSTODY_DEPOSIT_ABI = [
+  {
+    name: "deposit",
+    type: "function",
+    stateMutability: "payable",
+    inputs: [
+      { name: "asset", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [],
+  },
+] as const;
+
+type DepositStep =
+  | "idle"
+  | "approving"
+  | "depositing"
+  | "registering"
+  | "faucet"
+  | "channel"
+  | "done";
+
+interface NetworkConfig {
+  network: string;
+  custodyAddress: string;
+  usdcAddress: string;
+}
+
 export function DepositModal() {
-  const { authenticated, login } = usePrivy();
+  const { user, authenticated, login } = usePrivy();
+  const { address: wagmiAddress } = useAccount();
   const [amount, setAmount] = useState("10");
   const [isDepositing, setIsDepositing] = useState(false);
+  const [step, setStep] = useState<DepositStep>("idle");
   const [open, setOpen] = useState(false);
-  const { balance, setBalance, setChannelId } = useUserStore();
+  const [networkConfig, setNetworkConfig] = useState<NetworkConfig | null>(null);
+  const { setBalance, setChannelId } = useUserStore();
+
+  const isMainnet = networkConfig?.network === "mainnet";
+
+  const walletAddress =
+    wagmiAddress ||
+    user?.wallet?.address ||
+    user?.linkedAccounts?.find((a) => a.type === "wallet")?.address;
+
+  const {
+    writeContractAsync: writeApprove,
+    data: approveTxHash,
+    reset: resetApprove,
+  } = useWriteContract();
+
+  const {
+    writeContractAsync: writeDeposit,
+    data: depositTxHash,
+    reset: resetDeposit,
+  } = useWriteContract();
+
+  const { isSuccess: approveConfirmed } = useWaitForTransactionReceipt({
+    hash: approveTxHash,
+  });
+
+  const { isSuccess: depositConfirmed } = useWaitForTransactionReceipt({
+    hash: depositTxHash,
+  });
+
+  useEffect(() => {
+    if (!open) return;
+    fetch("/api/yellow/config")
+      .then((res) => res.json())
+      .then((data) => setNetworkConfig(data))
+      .catch(() => toast.error("Failed to load network config"));
+  }, [open]);
+
+  useEffect(() => {
+    if (approveConfirmed && step === "approving") {
+      handleCustodyDeposit();
+    }
+  }, [approveConfirmed]);
+
+  useEffect(() => {
+    if (depositConfirmed && step === "depositing") {
+      handleServerRegistration();
+    }
+  }, [depositConfirmed]);
 
   async function handleDeposit() {
     if (!authenticated) {
@@ -29,24 +124,166 @@ export function DepositModal() {
       return;
     }
 
-    setIsDepositing(true);
-    try {
-      // For demo: simulate deposit by opening a Yellow state channel
-      // In production, this calls depositToCustody() from lib/yellow/deposit.ts
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+    if (!walletAddress) {
+      toast.error("No wallet connected");
+      return;
+    }
 
-      const depositAmount = Number(amount);
-      setBalance(balance + depositAmount);
-      setChannelId("demo-channel-" + Date.now().toString(36));
+    setIsDepositing(true);
+    resetApprove();
+    resetDeposit();
+
+    if (isMainnet) {
+      await handleMainnetDeposit();
+    } else {
+      await handleSandboxDeposit();
+    }
+  }
+
+  async function handleMainnetDeposit() {
+    if (!networkConfig || !walletAddress) return;
+
+    try {
+      setStep("approving");
+      const parsedAmount = parseUnits(amount, USDC_DECIMALS);
+
+      await writeApprove({
+        address: networkConfig.usdcAddress as `0x${string}`,
+        abi: ERC20_APPROVE_ABI,
+        functionName: "approve",
+        args: [networkConfig.custodyAddress as `0x${string}`, parsedAmount],
+      });
+    } catch {
+      toast.error("USDC approval rejected");
+      setIsDepositing(false);
+      setStep("idle");
+    }
+  }
+
+  async function handleCustodyDeposit() {
+    if (!networkConfig || !walletAddress) return;
+
+    try {
+      setStep("depositing");
+      const parsedAmount = parseUnits(amount, USDC_DECIMALS);
+
+      await writeDeposit({
+        address: networkConfig.custodyAddress as `0x${string}`,
+        abi: CUSTODY_DEPOSIT_ABI,
+        functionName: "deposit",
+        args: [networkConfig.usdcAddress as `0x${string}`, parsedAmount],
+      });
+    } catch {
+      toast.error("Custody deposit rejected");
+      setIsDepositing(false);
+      setStep("idle");
+    }
+  }
+
+  async function handleServerRegistration() {
+    if (!walletAddress) return;
+
+    try {
+      setStep("registering");
+      const amountRaw = parseUnits(amount, USDC_DECIMALS).toString();
+
+      const res = await fetch("/api/yellow/deposit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userAddress: walletAddress,
+          amount: amountRaw,
+          txHash: depositTxHash,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Server registration failed");
+        return;
+      }
+
+      const balanceUsdc = Number(data.balance) / 10 ** USDC_DECIMALS;
+      setBalance(balanceUsdc);
+      if (data.channelId) setChannelId(data.channelId);
+      setStep("done");
+
+      toast.success(`Deposited $${amount} USDC on-chain`);
+      setOpen(false);
+    } catch {
+      toast.error("Failed to register deposit with server");
+    } finally {
+      setIsDepositing(false);
+      setStep("idle");
+    }
+  }
+
+  async function handleSandboxDeposit() {
+    setStep("faucet");
+
+    try {
+      const amountRaw = (Number(amount) * 10 ** USDC_DECIMALS).toString();
+
+      setStep("channel");
+      const res = await fetch("/api/yellow/deposit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userAddress: walletAddress,
+          amount: amountRaw,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || "Deposit failed");
+        return;
+      }
+
+      const balanceUsdc = Number(data.balance) / 10 ** USDC_DECIMALS;
+      setBalance(balanceUsdc);
+      setChannelId(data.channelId);
+      setStep("done");
 
       toast.success(`Deposited $${amount} USDC to Yellow channel`);
       setOpen(false);
     } catch {
-      toast.error("Deposit failed");
+      toast.error("Deposit failed — check connection");
     } finally {
       setIsDepositing(false);
+      setStep("idle");
     }
   }
+
+  function getButtonLabel(): string {
+    switch (step) {
+      case "approving":
+        return "Approving USDC...";
+      case "depositing":
+        return "Depositing to custody...";
+      case "registering":
+        return "Registering balance...";
+      case "faucet":
+        return "Requesting funds...";
+      case "channel":
+        return "Opening channel...";
+      default:
+        return `Deposit $${amount} USDC`;
+    }
+  }
+
+  const stepDescriptions = isMainnet
+    ? [
+        { num: "1", text: "Approve USDC spending for custody contract" },
+        { num: "2", text: "Deposit USDC into Yellow custody contract on Base" },
+        { num: "3", text: "Bet instantly — no gas fees per transaction" },
+      ]
+    : [
+        { num: "1", text: "USDC deposited into Yellow custody contract on Base" },
+        { num: "2", text: "State channel opened with ClearNode" },
+        { num: "3", text: "Bet instantly — no gas fees per transaction" },
+      ];
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -62,32 +299,23 @@ export function DepositModal() {
         <DialogHeader>
           <DialogTitle>Deposit USDC</DialogTitle>
           <DialogDescription>
-            Fund your Yellow state channel to start placing bets. Deposits are
-            instant and gasless after the initial channel opening.
+            {isMainnet
+              ? "Deposit USDC from your wallet into the Yellow custody contract on Base. This requires two wallet signatures."
+              : "Fund your Yellow state channel to start placing bets. Deposits are instant and gasless after the initial channel opening."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="rounded-lg border border-pulse-black/10 bg-pulse-black/[0.02] p-4">
             <div className="mb-3 space-y-2 text-xs text-pulse-gray">
-              <div className="flex items-center gap-2">
-                <div className="flex size-5 items-center justify-center rounded-full bg-pulse-lime-100 text-[10px] font-bold text-pulse-lime-700">
-                  1
+              {stepDescriptions.map((s) => (
+                <div key={s.num} className="flex items-center gap-2">
+                  <div className="flex size-5 items-center justify-center rounded-full bg-pulse-lime-100 text-[10px] font-bold text-pulse-lime-700">
+                    {s.num}
+                  </div>
+                  <span>{s.text}</span>
                 </div>
-                <span>USDC deposited into Yellow custody contract on Base</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex size-5 items-center justify-center rounded-full bg-pulse-lime-100 text-[10px] font-bold text-pulse-lime-700">
-                  2
-                </div>
-                <span>State channel opened with ClearNode</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex size-5 items-center justify-center rounded-full bg-pulse-lime-100 text-[10px] font-bold text-pulse-lime-700">
-                  3
-                </div>
-                <span>Bet instantly — no gas fees per transaction</span>
-              </div>
+              ))}
             </div>
           </div>
 
@@ -126,7 +354,7 @@ export function DepositModal() {
             disabled={isDepositing || !amount || Number(amount) <= 0}
             className="w-full bg-pulse-lime-400 font-bold text-pulse-black hover:bg-pulse-lime-500"
           >
-            {isDepositing ? "Opening Channel..." : `Deposit $${amount} USDC`}
+            {getButtonLabel()}
           </Button>
         </DialogFooter>
       </DialogContent>

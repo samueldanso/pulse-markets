@@ -38,10 +38,24 @@ export async function createChannel(
     token: asset as `0x${string}`,
   });
 
-  const response = (await client.sendMessage(createMessage)) as any;
+  const response = (await client.sendMessage(createMessage)) as Record<string, unknown>;
 
-  const channelId = response.params?.channel_id;
+  const params = response.params as Record<string, unknown> | Record<string, unknown>[] | undefined;
+  let channelId: string | undefined;
+
+  if (Array.isArray(params)) {
+    channelId = (params[0] as Record<string, unknown>)?.channel_id as string | undefined;
+  } else if (params) {
+    channelId = (params.channel_id ?? params.channelId) as string | undefined;
+  }
+
+  // Some ClearNode versions return channel_id at response top level
+  if (!channelId && typeof (response as Record<string, unknown>).channel_id === "string") {
+    channelId = (response as Record<string, unknown>).channel_id as string;
+  }
+
   if (!channelId) {
+    console.error("[Yellow] Channel create response:", JSON.stringify(response));
     throw new Error("Failed to create channel - no channel_id in response");
   }
 
@@ -105,13 +119,9 @@ export async function deallocateFromChannel(
 
   console.log(`[Yellow] Deallocating ${amount} from channel ${channelId}...`);
 
-  // TODO: Implement proper deallocate flow
-  // For now, use allocate_amount with negative value or separate RPC call
-  console.warn("[Yellow] Deallocation not yet fully implemented");
-
   const resizeMessage = await createResizeChannelMessage(sessionSigner, {
     channel_id: channelId,
-    allocate_amount: BigInt(0), // Placeholder
+    resize_amount: -BigInt(amount),
     funds_destination: channelId,
   });
 
@@ -139,16 +149,19 @@ export async function getChannels(
   const channelsMessage = await createGetChannelsMessage(sessionSigner);
   const response = (await client.sendMessage(channelsMessage)) as any;
 
-  const channels = response.params?.channels || [];
+  // ClearNode may return params as array of channels or object with .channels key
+  const params = response.params;
+  const channels = Array.isArray(params)
+    ? params
+    : params?.channels || [];
 
-  // Transform to our ChannelInfo format
-  return channels.map((ch: any) => ({
-    channelId: ch.channel_id,
-    chainId: ch.chain_id,
-    asset: ch.asset,
-    balance: ch.balance || "0",
-    status: ch.status || "open",
-    participants: ch.participants || [],
+  return channels.map((ch: Record<string, unknown>) => ({
+    channelId: ch.channel_id as string,
+    chainId: ch.chain_id as number,
+    asset: (ch.token || ch.asset || "") as string,
+    balance: (ch.balance || "0") as string,
+    status: (ch.status || "open") as string,
+    participants: (ch.participants || []) as string[],
   }));
 }
 
@@ -163,17 +176,14 @@ export async function getOrCreateChannel(client: YellowClient): Promise<Hex> {
   // Check for existing channels
   const channels = await getChannels(client);
 
-  // Find USDC channel on Base
-  const usdcChannel = channels.find(
-    (ch) =>
-      ch.chainId === YELLOW_CHAIN_ID &&
-      ch.asset.toLowerCase() === USDC_ADDRESS.toLowerCase() &&
-      ch.status === "open",
+  // Find any open channel on the configured chain
+  const openChannel = channels.find(
+    (ch) => ch.status === "open" && ch.chainId === YELLOW_CHAIN_ID,
   );
 
-  if (usdcChannel) {
-    console.log(`[Yellow] Using existing channel: ${usdcChannel.channelId}`);
-    return usdcChannel.channelId;
+  if (openChannel) {
+    console.log(`[Yellow] Using existing channel: ${openChannel.channelId}`);
+    return openChannel.channelId;
   }
 
   // Create new channel

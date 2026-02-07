@@ -12,7 +12,7 @@ import {
 } from "@erc7824/nitrolite";
 import type { Hex } from "viem";
 import type { YellowClient } from "./client";
-import { CHALLENGE_PERIOD, PROTOCOL_VERSION } from "./constants";
+import { CHALLENGE_PERIOD, PROTOCOL_VERSION, YELLOW_ASSET } from "./constants";
 import type {
   MarketPool,
   MarketSession,
@@ -22,42 +22,44 @@ import type {
 } from "./types";
 
 /**
- * Create a market session (app session) on Yellow Network
- * One session per market, supports N participants
- *
- * @param client - YellowClient instance
- * @param marketId - Unique market identifier
- * @param operatorAddress - Operator wallet address (session coordinator)
- * @returns Market session with empty pools
+ * Create a market session (app session) on Yellow Network.
+ * Yellow requires minimum 2 participants — operator + first bettor.
+ * Operator signs unilaterally (quorum=50, weight=50).
  */
 export async function createMarketSession(
   client: YellowClient,
   marketId: string,
   operatorAddress: Hex,
+  userAddress: Hex,
 ): Promise<MarketSession> {
   const sessionSigner = client.getSessionSigner();
   if (!sessionSigner) {
     throw new Error("Client not authenticated");
   }
 
-  console.log(`[Yellow] Creating market session for ${marketId}`);
+  console.log(
+    `[Yellow] Creating market session for ${marketId} (operator=${operatorAddress}, user=${userAddress})`,
+  );
 
-  // App definition: operator has tiebreaker for disputes
   const definition: RPCAppDefinition = {
     protocol: PROTOCOL_VERSION,
-    participants: [operatorAddress], // Start with operator only
-    weights: [100], // Operator controls until users join
-    quorum: 100, // Majority consensus
+    participants: [operatorAddress, userAddress],
+    weights: [50, 50],
+    quorum: 50,
     challenge: CHALLENGE_PERIOD,
-    nonce: Date.now(), // Unique per market
+    nonce: Date.now(),
     application: `PulseMarkets:${marketId}`,
   };
 
-  // Initial allocations: operator deposits 0 (collects protocol fees)
   const allocations: RPCAppSessionAllocation[] = [
     {
       participant: operatorAddress,
-      asset: "usdc",
+      asset: YELLOW_ASSET,
+      amount: "0",
+    },
+    {
+      participant: userAddress,
+      asset: YELLOW_ASSET,
       amount: "0",
     },
   ];
@@ -71,8 +73,13 @@ export async function createMarketSession(
   // Send to Yellow Network
   const response = (await client.sendMessage(sessionMessage)) as any;
 
-  const sessionId = response.params?.app_session_id as string;
+  // ClearNode returns params as array: [{ app_session_id, status }]
+  const params = response.params;
+  const sessionId = (
+    Array.isArray(params) ? params[0]?.app_session_id : params?.app_session_id
+  ) as string;
   if (!sessionId) {
+    console.error("[Yellow] Session response:", JSON.stringify(response));
     throw new Error("Failed to create market session - no app_session_id");
   }
 
@@ -137,16 +144,25 @@ export async function addBetToMarket(
   const targetPool = params.side === "UP" ? session.upPool : session.downPool;
   const otherPool = params.side === "UP" ? session.downPool : session.upPool;
 
-  // Check if user already bet on this side
-  if (targetPool.participants.includes(params.userAddress)) {
-    throw new Error(`User already bet ${params.side} on this market`);
+  // If user already bet on this side, add to their existing position
+  const existingIdx = targetPool.participants.indexOf(params.userAddress);
+  let updatedParticipants: Hex[];
+  let updatedAmounts: bigint[];
+
+  if (existingIdx >= 0) {
+    updatedParticipants = [...targetPool.participants];
+    updatedAmounts = [...targetPool.amounts];
+    updatedAmounts[existingIdx] =
+      updatedAmounts[existingIdx] + BigInt(params.amount);
+  } else {
+    updatedParticipants = [...targetPool.participants, params.userAddress];
+    updatedAmounts = [...targetPool.amounts, BigInt(params.amount)];
   }
 
-  // Update pool state
   const updatedTargetPool: MarketPool = {
     ...targetPool,
-    participants: [...targetPool.participants, params.userAddress],
-    amounts: [...targetPool.amounts, BigInt(params.amount)],
+    participants: updatedParticipants,
+    amounts: updatedAmounts,
     totalAmount: targetPool.totalAmount + BigInt(params.amount),
   };
 
@@ -161,17 +177,17 @@ export async function addBetToMarket(
   const allAllocations: RPCAppSessionAllocation[] = [
     {
       participant: session.operatorAddress,
-      asset: "usdc",
+      asset: YELLOW_ASSET,
       amount: "0",
     },
     ...updatedTargetPool.participants.map((addr, idx) => ({
       participant: addr,
-      asset: "usdc" as const,
+      asset: YELLOW_ASSET,
       amount: updatedTargetPool.amounts[idx].toString(),
     })),
     ...otherPool.participants.map((addr, idx) => ({
       participant: addr,
-      asset: "usdc" as const,
+      asset: YELLOW_ASSET,
       amount: otherPool.amounts[idx].toString(),
     })),
   ];
@@ -282,13 +298,13 @@ export function calculateProportionalDistribution(
       .filter((d) => d.payoutAmount > BigInt(0))
       .map((d) => ({
         participant: d.participant,
-        asset: "usdc" as const,
+        asset: YELLOW_ASSET,
         amount: d.payoutAmount.toString(),
       })),
     // Losers get 0 (must still be in allocations)
     ...loserDistributions.map((d) => ({
       participant: d.participant,
-      asset: "usdc" as const,
+      asset: YELLOW_ASSET,
       amount: "0",
     })),
   ];

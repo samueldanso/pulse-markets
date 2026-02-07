@@ -10,70 +10,119 @@ Visit http://localhost:3000
 
 ---
 
-## Demo Flow (Judge Walkthrough)
+## User Guide (A-Z Walkthrough)
 
-This is the exact flow a judge should follow to evaluate the project:
+Follow these steps from start to finish to experience the full Pulse Markets flow.
 
-### 1. Landing Page → Markets
+### Step 1: Open the App
 
-1. Visit `/` — see the Pulse Markets landing page
-2. Click **"Start Trading"** hero button → navigates to `/markets`
+Go to http://localhost:3000. You'll see the Pulse Markets landing page with a hero section.
 
-### 2. Connect Wallet
+Click **"Start Trading"** to go to the markets page.
 
-1. Click **"Connect"** in the top-right navbar
-2. Sign in via Privy (email, Google, or wallet)
-3. Wallet address appears in the navbar
+### Step 2: Connect Your Wallet
 
-### 3. Deposit USDC (Open State Channel)
+Click **"Connect"** in the top-right corner of the navbar. Sign in using email, Google, or an external wallet via Privy. Once connected, your wallet address appears in the navbar.
 
-1. Click **"Deposit"** button in the navbar
-2. Select amount ($10, $50, $100, or custom)
-3. Click **"Deposit $X USDC"** → opens a Yellow state channel
-4. Channel status shows green dot + balance in the navbar
+### Step 3: Deposit USDC
 
-### 4. Browse & Place Bets
+Click the green **"Deposit"** button in the navbar. Pick a quick amount ($10, $50, $100) or type a custom amount. Click **"Deposit $X USDC"**.
 
-1. On `/markets` — see 3 attention market cards with live countdowns
-2. Click a market card → opens `/market/:id` detail page
-3. See pool stats: UP/DOWN distribution bar, pool amounts, participant counts
-4. Select bet amount ($1, $5, $10, $25, or custom)
-5. Click **UP** or **DOWN** → bet placed instantly (no wallet popup!)
-6. Pool stats update in real-time
-7. Repeat across multiple markets
+What happens behind the scenes:
+- The server requests test funds from Yellow's sandbox faucet
+- A real state channel opens on Yellow Network
+- Your balance appears as a green dot + dollar amount in the navbar
 
-### 5. View Dashboard
+This takes a few seconds. You'll see progress: "Requesting funds..." then "Opening channel...".
 
-1. Click **"Dashboard"** in the navbar
-2. See: channel balance, total staked, open positions count
-3. Each bet listed with market, side, amount, and timestamp
-4. Click a market name → goes back to market detail
+### Step 4: Browse Markets
 
-### 6. Market Settlement
+On `/markets`, you'll see 3 attention market cards:
+- **Bitcoin Attention Index** — Will BTC social attention rise?
+- **AI Agents Narrative Trend** — Is the AI agents narrative growing?
+- **Tweet Engagement** — Will a specific tweet go viral?
 
-1. Wait for a market timer to expire (15 minutes) OR test with curl (see below)
-2. On expired market detail page → orange **"Settle Market"** card appears
-3. Click **"Settle Market"** → AI agent fetches attention data and resolves
-4. See results:
-   - **AI Settlement** card: winner (UP/DOWN), reasoning, confidence, data source
-   - **ERC-8004 Agent** card: agent ID, operator address, registry link, reputation
-5. Click **"View on 8004scan"** → opens agent registry page
+Each card shows a live countdown timer (15 minutes from server start), pool sizes, and participant counts.
 
-### 7. Withdraw
+### Step 5: Place a Bet
 
-1. Click **"Withdraw"** button in the navbar
-2. Enter amount or click **"Max"**
-3. Click **"Withdraw $X USDC"** → closes state channel, USDC returned to wallet
+Click any market card to open its detail page. Choose your bet amount ($1, $5, $10, $25, or custom). Click **UP** (attention will increase) or **DOWN** (attention will decrease). The bet is placed instantly with no wallet popup — it goes through Yellow state channels.
+
+If your balance is too low, the button says **"Deposit first"** and is disabled.
+
+Pool stats update immediately after your bet.
+
+### Step 6: Check Your Dashboard
+
+Click **"Dashboard"** in the navbar. You'll see:
+- Channel balance (updates every 10 seconds from the server)
+- Total amount staked across markets
+- List of all your open positions with market, side, amount, and timestamp
+
+Click any market name to jump back to that market's detail page.
+
+### Step 7: Wait for Settlement
+
+When a market's 15-minute timer expires, go to its detail page. An orange **"Settle Market"** card appears. Click it to trigger AI settlement.
+
+The AI agent:
+1. Fetches real attention data (LunarCrush or mock fallback)
+2. Compares current vs. baseline values
+3. Determines UP or DOWN winner
+4. Calculates proportional payouts for all bettors
+5. Generates a reasoning explanation
+
+Results show:
+- **AI Settlement card**: winner, reasoning, confidence score, data source
+- **ERC-8004 Agent card**: on-chain agent identity, operator address, registry link
+
+Click **"View on 8004scan"** to verify the agent on-chain.
+
+### Step 8: Withdraw
+
+Click the **"Withdraw"** button in the navbar. Enter an amount or click **"Max"** for the full balance. Click **"Withdraw $X USDC"** — the state channel is deallocated and funds return to your wallet.
 
 ---
 
 ## API Testing (curl)
+
+For developers who want to test the backend directly.
 
 ### Health Check
 
 ```bash
 curl http://localhost:3000/api/health
 ```
+
+Returns Yellow connection status, agent registration, and operator balance.
+
+### Yellow Network Config
+
+```bash
+curl http://localhost:3000/api/yellow/config
+```
+
+Returns the active network (sandbox/mainnet), chain ID, custody address, faucet URL.
+
+### Deposit (Open Channel)
+
+```bash
+curl -X POST http://localhost:3000/api/yellow/deposit \
+  -H "Content-Type: application/json" \
+  -d '{"userAddress":"0x1234567890abcdef1234567890abcdef12345678","amount":"10000000"}'
+```
+
+Amount is in raw units (6 decimals). `10000000` = $10 USDC.
+
+Returns: `{ success, balance, channelId }`
+
+### Check Balance
+
+```bash
+curl "http://localhost:3000/api/yellow/balance?address=0x1234567890abcdef1234567890abcdef12345678"
+```
+
+Returns: `{ balance, channelId, connected, authenticated }`
 
 ### List Markets
 
@@ -95,24 +144,63 @@ curl -X POST http://localhost:3000/api/markets/btc-sentiment/bet \
   -d '{"userAddress":"0x1234567890abcdef1234567890abcdef12345678","side":"UP","amount":"5000000"}'
 ```
 
+Requires sufficient deposited balance. Returns error if balance < bet amount.
+
 ### Settle a Market
 
 ```bash
 curl -X POST http://localhost:3000/api/settle/btc-sentiment
 ```
 
-Settlement response includes:
-- `winner`: "UP" or "DOWN"
-- `reasoning`: AI-generated explanation
-- `confidence`: 0-1 score
-- `dataSource`: "lunarcrush" or "mock"
-- `distributions`: per-participant payouts
-- `agent`: ERC-8004 identity proof (agentId, registryUrl, reputation)
+Returns: `{ winner, reasoning, confidence, dataSource, distributions, agent }`
+
+### Withdraw
+
+```bash
+curl -X POST http://localhost:3000/api/yellow/withdraw \
+  -H "Content-Type: application/json" \
+  -d '{"userAddress":"0x1234567890abcdef1234567890abcdef12345678","amount":"5000000"}'
+```
+
+Returns: `{ success, balance }`
 
 ### Agent Discovery (A2A)
 
 ```bash
 curl http://localhost:3000/api/agent/.well-known/agent-card.json
+```
+
+### Full Flow Test (curl sequence)
+
+```bash
+# 1. Deposit 10 USDC
+curl -s -X POST http://localhost:3000/api/yellow/deposit \
+  -H "Content-Type: application/json" \
+  -d '{"userAddress":"0xTEST","amount":"10000000"}'
+
+# 2. Check balance (should be 10000000)
+curl -s "http://localhost:3000/api/yellow/balance?address=0xTEST"
+
+# 3. Place UP bet for 5 USDC
+curl -s -X POST http://localhost:3000/api/markets/btc-sentiment/bet \
+  -H "Content-Type: application/json" \
+  -d '{"userAddress":"0xTEST","side":"UP","amount":"5000000"}'
+
+# 4. Check balance (should be 5000000)
+curl -s "http://localhost:3000/api/yellow/balance?address=0xTEST"
+
+# 5. Try to bet more than balance (should fail)
+curl -s -X POST http://localhost:3000/api/markets/btc-sentiment/bet \
+  -H "Content-Type: application/json" \
+  -d '{"userAddress":"0xTEST","side":"DOWN","amount":"99000000"}'
+
+# 6. Withdraw remaining
+curl -s -X POST http://localhost:3000/api/yellow/withdraw \
+  -H "Content-Type: application/json" \
+  -d '{"userAddress":"0xTEST","amount":"5000000"}'
+
+# 7. Settle market
+curl -s -X POST http://localhost:3000/api/settle/btc-sentiment
 ```
 
 ---
@@ -142,13 +230,15 @@ OPENAI_API_KEY=...            # For AI settlement reasoning
 LUNARCRUSH_API_KEY=...        # Optional — falls back to mock data
 AGENT_ID=...                  # From register-agent script
 PINATA_JWT=...                # For IPFS agent registration
+YELLOW_NETWORK=sandbox        # "sandbox" or "mainnet"
 ```
 
 ### Pre-Demo Setup
 
 1. **Register agent** (if not done): `bun run register-agent`
 2. **Set AGENT_ID** in `.env` from registration output
-3. **Operator funding**: Sandbox uses test tokens (no deposit needed). For mainnet, run `bun run scripts/deposit-to-custody.ts`
+3. **Start server**: `bun run dev`
+4. Operator connects to Yellow sandbox automatically on first API call
 
 ---
 
@@ -156,29 +246,36 @@ PINATA_JWT=...                # For IPFS agent registration
 
 | Setting | Sandbox | Mainnet |
 |---------|---------|---------|
+| Env var | `YELLOW_NETWORK=sandbox` | `YELLOW_NETWORK=mainnet` |
 | WebSocket | `wss://clearnet-sandbox.yellow.com/ws` | `wss://clearnet.yellow.com/ws` |
-| Chain | Base Sepolia (84532) | Base (8453) |
-| Tokens | `ytest.usd` (faucet) | Real USDC |
-| Config | `lib/yellow/constants.ts` | Same file, swap values |
+| Chain | Sepolia (11155111) | Base (8453) |
+| Tokens | `ytest.usd` (faucet-funded) | Real USDC |
+| Deposit | Server calls faucet automatically | User deposits on-chain to custody |
+| Config endpoint | `GET /api/yellow/config` returns sandbox values | Returns mainnet values |
+
+Switch by setting `YELLOW_NETWORK` in `.env` and restarting the server.
 
 ---
 
-## What Works Right Now
+## What Works
 
-- ClearNode connection + authentication
-- Balance fetching from Yellow
-- All API routes (markets, bets, settlement, agent)
-- All frontend pages (landing, markets, market detail, dashboard)
-- Deposit/withdraw modals (demo simulation)
-- ERC-8004 agent identity display after settlement
-- Local distribution math (proportional payouts)
+- Real Yellow ClearNode connection + EIP-712 authentication
+- Real channel creation and fund allocation via state channels
+- Per-user balance tracking (deposit, deduct on bet, withdraw)
+- Balance polling from server every 10 seconds
+- Wallet sync on Privy login (persists across page loads via server state)
+- Insufficient balance check blocks bets
+- All API routes: markets, bets, settlement, agent, yellow deposit/withdraw/balance/config
+- All frontend pages: landing, markets, market detail, dashboard
+- ERC-8004 agent identity (on-chain registered, displayed after settlement)
 - AI reasoning via GPT-4o-mini with mock fallback
+- Proportional payout math
 
-## What's Simulated for Demo
+## Known Limitations
 
-- Deposit/withdraw: UI simulates channel open/close (operator pre-funded on backend)
-- Positions: stored in client Zustand store (resets on page refresh)
-- If Yellow sessions fail, bets still work via in-memory state
+- Positions stored in client Zustand store (resets on hard refresh — server has balance, not bet history)
+- If Yellow WebSocket disconnects mid-session, auto-reconnect on next API call
+- Settlement payouts update server balance but not yet credited back to user balance automatically
 
 ## Markets (Demo)
 

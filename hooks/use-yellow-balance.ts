@@ -1,0 +1,45 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+import { useUserStore } from "@/stores/user-store";
+
+const POLL_INTERVAL = 10_000;
+
+export function useYellowBalance(address: string | undefined) {
+  const { setBalance, setChannelId } = useUserStore();
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (!address) return;
+
+    async function fetchBalance() {
+      try {
+        const res = await fetch(
+          `/api/yellow/balance?address=${encodeURIComponent(address!)}`,
+        );
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const balanceUsdc = Number(data.balance) / 1_000_000;
+        setBalance(balanceUsdc);
+
+        if (data.channelId) {
+          setChannelId(data.channelId);
+        } else {
+          setChannelId(null);
+        }
+      } catch {
+        // silent — polling will retry
+      }
+    }
+
+    fetchBalance();
+    intervalRef.current = setInterval(fetchBalance, POLL_INTERVAL);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [address, setBalance, setChannelId]);
+}

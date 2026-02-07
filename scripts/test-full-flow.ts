@@ -9,7 +9,7 @@ import { createWalletClient, http } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { base } from "viem/chains";
 import { YellowClient } from "../lib/yellow/client";
-import { CLEARNODE_SANDBOX_URL } from "../lib/yellow/constants";
+import { CLEARNODE_URL } from "../lib/yellow/constants";
 import {
   addBetToMarket,
   calculateProportionalDistribution,
@@ -39,7 +39,7 @@ async function main() {
     transport: http(),
   });
 
-  const client = new YellowClient({ clearNodeUrl: CLEARNODE_SANDBOX_URL });
+  const client = new YellowClient({ clearNodeUrl: CLEARNODE_URL });
 
   try {
     await client.connect(walletClient);
@@ -64,7 +64,7 @@ async function main() {
   const operatorAddress = account.address;
   let session;
   try {
-    session = await createMarketSession(client, "test-market-1", operatorAddress);
+    session = await createMarketSession(client, "test-market-1", operatorAddress, "0x0000000000000000000000000000000000000001" as `0x${string}`);
     console.log(`Session ID: ${session.sessionId}`);
     console.log("PASS: Market session created\n");
   } catch (error) {

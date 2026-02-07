@@ -42,6 +42,12 @@ async function main() {
     signer: privateKey,
     ipfs: "pinata",
     pinataJwt,
+    registryOverrides: {
+      8453: {
+        IDENTITY: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+        REPUTATION: "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63",
+      },
+    },
   });
 
   console.log("Creating agent...");

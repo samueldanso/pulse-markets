@@ -6,6 +6,7 @@ import { useState } from "react";
 import { base, baseSepolia } from "viem/chains";
 import { WagmiProvider } from "wagmi";
 
+import { WalletSyncProvider } from "@/components/providers/wallet-sync-provider";
 import { env } from "@/env";
 import { wagmiConfig } from "@/lib/wagmi-config";
 
@@ -42,7 +43,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         supportedChains: [baseSepolia, base],
       }}
     >
-      {inner}
+      <WalletSyncProvider>{inner}</WalletSyncProvider>
     </PrivyProvider>
   );
 }

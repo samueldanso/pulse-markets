@@ -5,6 +5,7 @@ import { logger } from "hono/logger";
 import { agentRoutes } from "./routes/agent";
 import { marketRoutes } from "./routes/markets";
 import { settleRoutes } from "./routes/settle";
+import { yellowRoutes } from "./routes/yellow";
 import { agentIdentityService } from "./services/agent-identity";
 import { yellowService } from "./services/yellow-service";
 
@@ -16,6 +17,7 @@ app.use("*", cors());
 app.route("/markets", marketRoutes);
 app.route("/settle", settleRoutes);
 app.route("/agent", agentRoutes);
+app.route("/yellow", yellowRoutes);
 
 // Initialize agent identity with operator wallet
 const operatorAddress = process.env.WALLET_ADDRESS;

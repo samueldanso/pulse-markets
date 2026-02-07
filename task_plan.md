@@ -1,23 +1,27 @@
-# Task Plan: Demo-Ready Missing Features
+# Task Plan: Fix Yellow State Channels Integration
 
 ## Goal
-Implement all missing UI features from pending.md so judges can complete the full demo flow.
+Make Yellow betting work end-to-end — session creation, bet placement, settlement via real state channels.
 
 ## Features / Steps
-- [x] Feature 1: ERC-8004 agent profile block on market detail after settlement
-- [x] Feature 2: Deposit flow — minimal deposit modal/explainer for demo
-- [x] Feature 3: Withdraw flow — withdraw button/modal for demo
-- [x] Feature 4: Channel status + user balance display in app navbar
-- [x] Feature 5: Dashboard page — user positions view
-- [x] Feature 6: Landing CTA — "Start Trading" button links to /markets
-- [x] Feature 7: Update testing.md with full demo instructions
+- [x] Fix 1: Yellow session response parsing — array vs object
+- [x] Fix 2: Yellow channel response parsing — array handling
+- [x] Fix 3: ERC-8004 registration script — registryOverrides for Base 8453
+- [x] Fix 4: Agent identity — parse chainId:tokenId format, fix URLs
+- [x] Fix 5: Session creation requires 2 participants — add userAddress as 2nd participant
+- [x] Fix 6: Remove Yellow bypass fallback — Yellow must work, no mock path
+- [x] Fix 7: Client error handling — catch ClearNode `{"method":"error"}` format
+- [x] Fix 8: End-to-end test — verify betting flow works
 
 ## Current
 **Working on**: Complete
-**Status**: all steps done
+**Status**: all fixes done, E2E verified
 
 ## Decisions
-- Deposit/withdraw: Demo-friendly modals explaining the Yellow flow, not full custody integration (operator pre-funded)
-- Dashboard: Simple positions list from user store
-- Agent profile: Inline block on market detail page after settlement
-- Dark theme for (app) layout not in scope — keep consistent light theme
+- Session per market: operator + first bettor as 2 participants
+- weights: [50, 50], quorum: 50 — operator can sign unilaterally
+- Removed fallback bypass (user requirement: judges won't accept it)
+- ClearNode error format `{"method":"error","params":{...}}` now caught by client
+
+## Errors
+- "invalid number of participants" → fixed by adding 2nd participant

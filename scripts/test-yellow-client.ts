@@ -8,7 +8,7 @@ import { createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { base } from "viem/chains";
 import { YellowClient } from "../lib/yellow/client";
-import { CLEARNODE_SANDBOX_URL } from "../lib/yellow/constants";
+import { CLEARNODE_URL } from "../lib/yellow/constants";
 
 const OPERATOR_PRIVATE_KEY = process.env.PRIVATE_KEY;
 
@@ -30,7 +30,7 @@ async function main() {
   });
 
   const yellowClient = new YellowClient({
-    clearNodeUrl: CLEARNODE_SANDBOX_URL,
+    clearNodeUrl: CLEARNODE_URL,
   });
 
   try {

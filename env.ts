@@ -18,6 +18,7 @@ export const env = createEnv({
 		LUNARCRUSH_API_KEY: z.string().optional(),
 		PINATA_JWT: z.string().optional(),
 		AGENT_ID: z.string().optional(),
+		YELLOW_NETWORK: z.enum(["sandbox", "mainnet"]).default("sandbox"),
 	},
 	runtimeEnv: {
 		NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
@@ -32,5 +33,6 @@ export const env = createEnv({
 		LUNARCRUSH_API_KEY: process.env.LUNARCRUSH_API_KEY,
 		PINATA_JWT: process.env.PINATA_JWT,
 		AGENT_ID: process.env.AGENT_ID,
+		YELLOW_NETWORK: process.env.YELLOW_NETWORK,
 	},
 })

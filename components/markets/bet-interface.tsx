@@ -27,7 +27,7 @@ export function BetInterface({
   preSelectedSide,
 }: BetInterfaceProps) {
   const { user, authenticated, login } = usePrivy();
-  const { addPosition } = useUserStore();
+  const { addPosition, balance } = useUserStore();
   const [amount, setAmount] = useState("5");
   const [selectedSide, setSelectedSide] = useState<BetSide | null>(
     preSelectedSide ?? null,
@@ -35,7 +35,8 @@ export function BetInterface({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isExpired = Date.now() > closesAt;
-  const canBet = status === "open" && !isExpired && authenticated;
+  const insufficientBalance = balance < Number(amount);
+  const canBet = status === "open" && !isExpired && authenticated && !insufficientBalance;
 
   async function handleBet() {
     if (!selectedSide) {
@@ -188,9 +189,11 @@ export function BetInterface({
       >
         {isSubmitting
           ? "Placing bet..."
-          : selectedSide
-            ? `Bet ${selectedSide} · $${amount}`
-            : "Select UP or DOWN"}
+          : insufficientBalance && authenticated
+            ? "Deposit first"
+            : selectedSide
+              ? `Bet ${selectedSide} · $${amount}`
+              : "Select UP or DOWN"}
       </Button>
 
       {!authenticated && (

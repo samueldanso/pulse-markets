@@ -16,16 +16,27 @@ import {
 import { Input } from "@/components/ui/input";
 import { useUserStore } from "@/stores/user-store";
 
+const USDC_DECIMALS = 6;
+
 export function WithdrawModal() {
-  const { authenticated, login } = usePrivy();
+  const { user, authenticated, login } = usePrivy();
   const [amount, setAmount] = useState("");
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [open, setOpen] = useState(false);
   const { balance, setBalance, channelId, setChannelId } = useUserStore();
 
+  const walletAddress =
+    user?.wallet?.address ||
+    user?.linkedAccounts?.find((a) => a.type === "wallet")?.address;
+
   async function handleWithdraw() {
     if (!authenticated) {
       login();
+      return;
+    }
+
+    if (!walletAddress) {
+      toast.error("No wallet connected");
       return;
     }
 
@@ -37,13 +48,27 @@ export function WithdrawModal() {
 
     setIsWithdrawing(true);
     try {
-      // For demo: simulate withdrawal by closing the Yellow state channel
-      // In production, this calls closeChannel() + withdrawFromCustody()
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const amountRaw = (withdrawAmount * 10 ** USDC_DECIMALS).toString();
 
-      const newBalance = balance - withdrawAmount;
-      setBalance(newBalance);
-      if (newBalance <= 0) {
+      const res = await fetch("/api/yellow/withdraw", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userAddress: walletAddress,
+          amount: amountRaw,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || "Withdrawal failed");
+        return;
+      }
+
+      const balanceUsdc = Number(data.balance) / 10 ** USDC_DECIMALS;
+      setBalance(balanceUsdc);
+      if (balanceUsdc <= 0) {
         setChannelId(null);
       }
 
@@ -51,7 +76,7 @@ export function WithdrawModal() {
       setOpen(false);
       setAmount("");
     } catch {
-      toast.error("Withdrawal failed");
+      toast.error("Withdrawal failed — check connection");
     } finally {
       setIsWithdrawing(false);
     }
@@ -135,7 +160,10 @@ export function WithdrawModal() {
           <Button
             onClick={handleWithdraw}
             disabled={
-              isWithdrawing || !amount || Number(amount) <= 0 || Number(amount) > balance
+              isWithdrawing ||
+              !amount ||
+              Number(amount) <= 0 ||
+              Number(amount) > balance
             }
             className="w-full bg-pulse-black font-bold text-white hover:bg-pulse-black/90"
           >

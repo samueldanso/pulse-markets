@@ -9,7 +9,21 @@ import { privateKeyToAccount } from "viem/accounts";
 import { base } from "viem/chains";
 import { getMarketById, MARKETS } from "@/data/markets";
 import { YellowClient } from "@/lib/yellow/client";
-import { CLEARNODE_SANDBOX_URL } from "@/lib/yellow/constants";
+import {
+  allocateToChannel,
+  deallocateFromChannel,
+  getOrCreateChannel,
+} from "@/lib/yellow/channels";
+import {
+  CLEARNODE_URL,
+  CUSTODY_ADDRESS,
+  FAUCET_URL,
+  USDC_ADDRESS,
+  USDC_DECIMALS,
+  YELLOW_ASSET,
+  YELLOW_CHAIN,
+  YELLOW_CHAIN_ID,
+} from "@/lib/yellow/constants";
 import {
   addBetToMarket,
   calculateProportionalDistribution,
@@ -23,9 +37,15 @@ import type {
 } from "@/lib/yellow/types";
 import type { BetSide, Market } from "@/types";
 
+interface UserState {
+  balance: string;
+  channelId: string | null;
+}
+
 class YellowService {
   private client: YellowClient | null = null;
   private sessions = new Map<string, MarketSession>();
+  private userStates = new Map<string, UserState>();
   private initialized = false;
   private initializing: Promise<void> | null = null;
 
@@ -53,13 +73,34 @@ class YellowService {
     });
 
     this.client = new YellowClient({
-      clearNodeUrl: CLEARNODE_SANDBOX_URL,
+      clearNodeUrl: CLEARNODE_URL,
     });
 
     await this.client.connect(walletClient);
     this.initialized = true;
 
     console.log("[YellowService] Initialized and connected to ClearNode");
+
+    await this.requestFaucetFunds(account.address);
+  }
+
+  private async requestFaucetFunds(address: string): Promise<void> {
+    if (!FAUCET_URL) return;
+
+    try {
+      const res = await fetch(FAUCET_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userAddress: address }),
+      });
+      if (res.ok) {
+        console.log(`[YellowService] Faucet funded: ${address}`);
+      } else {
+        console.warn(`[YellowService] Faucet request failed: ${res.status}`);
+      }
+    } catch (error) {
+      console.warn("[YellowService] Faucet unavailable:", error instanceof Error ? error.message : error);
+    }
   }
 
   private async ensureClient(): Promise<YellowClient> {
@@ -91,19 +132,22 @@ class YellowService {
     const operatorAddress = client.getWalletAddress();
     if (!operatorAddress) throw new Error("Operator wallet not available");
 
-    // Get or create session for this market
     let session = this.sessions.get(params.marketId);
     if (!session) {
+      await this.requestFaucetFunds(params.userAddress);
+
       session = await createMarketSession(
         client,
         params.marketId,
         operatorAddress as `0x${string}`,
+        params.userAddress as `0x${string}`,
       );
       this.sessions.set(params.marketId, session);
       market.sessionId = session.sessionId;
     }
 
-    // Add bet to session
+    this.deductUserBalance(params.userAddress, params.amount);
+
     const betParams: PoolBetParams = {
       userAddress: params.userAddress as `0x${string}`,
       marketId: params.marketId,
@@ -113,16 +157,27 @@ class YellowService {
 
     session = await addBetToMarket(client, session, betParams);
     this.sessions.set(params.marketId, session);
+    console.log(`[YellowService] Bet recorded on Yellow session`);
 
-    // Update market state
+    // Always update in-memory market state (works even if Yellow fails)
     const betAmount = BigInt(params.amount);
     if (params.side === "UP") {
-      market.upParticipants.push(params.userAddress);
-      market.upBets.push(betAmount);
+      const existingIdx = market.upParticipants.indexOf(params.userAddress);
+      if (existingIdx >= 0) {
+        market.upBets[existingIdx] += betAmount;
+      } else {
+        market.upParticipants.push(params.userAddress);
+        market.upBets.push(betAmount);
+      }
       market.upPool += betAmount;
     } else {
-      market.downParticipants.push(params.userAddress);
-      market.downBets.push(betAmount);
+      const existingIdx = market.downParticipants.indexOf(params.userAddress);
+      if (existingIdx >= 0) {
+        market.downBets[existingIdx] += betAmount;
+      } else {
+        market.downParticipants.push(params.userAddress);
+        market.downBets.push(betAmount);
+      }
       market.downPool += betAmount;
     }
     market.totalPot = market.upPool + market.downPool;
@@ -238,6 +293,134 @@ class YellowService {
     market.resolvedAt = Date.now();
 
     return { market, distributions };
+  }
+
+  private getUserState(address: string): UserState {
+    const key = address.toLowerCase();
+    let state = this.userStates.get(key);
+    if (!state) {
+      state = { balance: "0", channelId: null };
+      this.userStates.set(key, state);
+    }
+    return state;
+  }
+
+  private get isSandbox(): boolean {
+    return (process.env.YELLOW_NETWORK || "sandbox") !== "mainnet";
+  }
+
+  async depositForUser(
+    address: string,
+    amount: string,
+    txHash?: string,
+  ): Promise<{ balance: string; channelId: string | null }> {
+    const state = this.getUserState(address);
+
+    if (this.isSandbox) {
+      const client = await this.ensureClient();
+      await this.requestFaucetFunds(address);
+
+      let channelId = state.channelId;
+      if (!channelId) {
+        channelId = await getOrCreateChannel(client);
+        state.channelId = channelId;
+      }
+
+      await allocateToChannel(client, { channelId: channelId as `0x${string}`, amount });
+    }
+
+    const prev = BigInt(state.balance);
+    const added = BigInt(amount);
+    state.balance = (prev + added).toString();
+
+    const mode = this.isSandbox ? "sandbox" : "mainnet";
+    const txInfo = txHash ? ` (tx: ${txHash})` : "";
+    console.log(
+      `[YellowService] Deposited ${amount} for ${address} [${mode}]${txInfo}. Balance: ${state.balance}`,
+    );
+
+    return { balance: state.balance, channelId: state.channelId };
+  }
+
+  async withdrawForUser(
+    address: string,
+    amount: string,
+  ): Promise<{ balance: string }> {
+    const client = await this.ensureClient();
+    const state = this.getUserState(address);
+
+    const current = BigInt(state.balance);
+    const withdrawal = BigInt(amount);
+    if (withdrawal > current) {
+      throw new Error("Insufficient balance");
+    }
+
+    if (state.channelId) {
+      await deallocateFromChannel(
+        client,
+        state.channelId as `0x${string}`,
+        amount,
+      );
+    }
+
+    const newBalance = current - withdrawal;
+    state.balance = newBalance.toString();
+
+    if (newBalance === BigInt(0)) {
+      state.channelId = null;
+    }
+
+    console.log(
+      `[YellowService] Withdrew ${amount} for ${address}. Balance: ${state.balance}`,
+    );
+
+    return { balance: state.balance };
+  }
+
+  getUserBalance(address: string): {
+    balance: string;
+    channelId: string | null;
+  } {
+    const state = this.getUserState(address);
+    return { balance: state.balance, channelId: state.channelId };
+  }
+
+  deductUserBalance(address: string, amount: string): void {
+    const state = this.getUserState(address);
+    const current = BigInt(state.balance);
+    const deduction = BigInt(amount);
+    if (deduction > current) {
+      throw new Error("Insufficient balance");
+    }
+    state.balance = (current - deduction).toString();
+  }
+
+  creditUserBalance(address: string, amount: string): void {
+    const state = this.getUserState(address);
+    const current = BigInt(state.balance);
+    state.balance = (current + BigInt(amount)).toString();
+  }
+
+  getNetworkConfig(): {
+    network: string;
+    chainId: number;
+    chainName: string;
+    asset: string;
+    usdcAddress: string;
+    custodyAddress: string;
+    clearNodeUrl: string;
+    faucetUrl: string | null;
+  } {
+    return {
+      network: process.env.YELLOW_NETWORK || "sandbox",
+      chainId: YELLOW_CHAIN_ID,
+      chainName: YELLOW_CHAIN.name,
+      asset: YELLOW_ASSET,
+      usdcAddress: USDC_ADDRESS,
+      custodyAddress: CUSTODY_ADDRESS,
+      clearNodeUrl: CLEARNODE_URL,
+      faucetUrl: FAUCET_URL,
+    };
   }
 
   getStatus(): {

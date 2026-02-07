@@ -88,8 +88,12 @@ class AgentIdentityService {
   ): Promise<AgentProof | null> {
     if (!this.agentId || !this.operatorAddress) return null;
 
-    const agentIdNum = Number(this.agentId);
-    const registryUrl = `${EXPLORER_BASE_URL}/base/${this.agentId}`;
+    // Agent ID format is "chainId:tokenId" (e.g. "8453:2373") — extract token ID for contract calls and URLs
+    const tokenId = this.agentId.includes(":")
+      ? this.agentId.split(":")[1]
+      : this.agentId;
+    const agentIdNum = Number(tokenId);
+    const registryUrl = `${EXPLORER_BASE_URL}/base/${tokenId}`;
 
     let reputationValue = 0;
     try {
@@ -108,7 +112,7 @@ class AgentIdentityService {
     }
 
     return {
-      agentId: this.agentId,
+      agentId: tokenId,
       agentRegistry: AGENT_REGISTRY_ID,
       operatorAddress: this.operatorAddress,
       registryUrl,
@@ -128,11 +132,14 @@ class AgentIdentityService {
     if (!this.agentId) return false;
 
     try {
+      const tokenId = this.agentId.includes(":")
+        ? this.agentId.split(":")[1]
+        : this.agentId;
       const owner = await this.publicClient.readContract({
         address: IDENTITY_REGISTRY_ADDRESS,
         abi: IDENTITY_REGISTRY_ABI,
         functionName: "ownerOf",
-        args: [BigInt(this.agentId)],
+        args: [BigInt(tokenId)],
       });
       return (
         (owner as string).toLowerCase() ===

@@ -15,6 +15,7 @@ import {
   BASE_CUSTODY_ADDRESS,
   USDC_ADDRESS,
   USDC_DECIMALS,
+  YELLOW_ASSET,
   YELLOW_CHAIN_ID,
 } from "./constants";
 import type { DepositResult } from "./types";
@@ -75,7 +76,7 @@ export async function depositToCustody(
   return {
     txHash,
     amount: depositAmount.toString(),
-    asset: "usdc",
+    asset: YELLOW_ASSET,
     chainId: YELLOW_CHAIN_ID,
   };
 }

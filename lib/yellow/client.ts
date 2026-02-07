@@ -18,7 +18,7 @@ import { generateSessionKey, getSessionExpiry } from "./auth";
 import {
   APP_NAME,
   AUTH_SCOPE,
-  CLEARNODE_SANDBOX_URL,
+  CLEARNODE_URL,
   SESSION_DURATION,
 } from "./constants";
 import type {
@@ -62,7 +62,7 @@ export class YellowClient {
     this.sessionKey = generateSessionKey();
     this.sessionSigner = createECDSAMessageSigner(this.sessionKey.privateKey);
 
-    const url = this.config.clearNodeUrl || CLEARNODE_SANDBOX_URL;
+    const url = this.config.clearNodeUrl || CLEARNODE_URL;
 
     await new Promise<void>((resolve, reject) => {
       this.ws = new WebSocket(url);
@@ -84,7 +84,7 @@ export class YellowClient {
       this.ws.on("close", () => {
         this.connectionStatus.connected = false;
         this.connectionStatus.authenticated = false;
-        console.log("[Yellow] Disconnected");
+        console.log("[Yellow] Disconnected — will reconnect on next request");
       });
     });
 
@@ -208,12 +208,27 @@ export class YellowClient {
         this.handleEvent(method, params);
       }
 
+      // Standard error format: { error: [requestId, ...] }
       if (response.error) {
         const requestId = response.error[0];
         const pending = this.pendingRequests.get(requestId);
         if (pending) {
           this.pendingRequests.delete(requestId);
           pending.reject(new Error(JSON.stringify(response.error)));
+        }
+      }
+
+      // ClearNode error format: { method: "error", params: { error: "..." } }
+      if (response.method === "error" && response.params) {
+        const errorMsg =
+          response.params.error || JSON.stringify(response.params);
+        console.error("[Yellow] ClearNode error:", errorMsg);
+        // Reject the most recent pending request (ClearNode doesn't include requestId)
+        const lastEntry = [...this.pendingRequests.entries()].pop();
+        if (lastEntry) {
+          const [reqId, pending] = lastEntry;
+          this.pendingRequests.delete(reqId);
+          pending.reject(new Error(String(errorMsg)));
         }
       }
     } catch {
@@ -259,7 +274,12 @@ export class YellowClient {
     message: string,
   ): Promise<{ method: string; params: Record<string, unknown> }> {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      throw new Error("Client not connected");
+      if (this.walletClient) {
+        console.log("[Yellow] Reconnecting...");
+        await this.connect(this.walletClient);
+      } else {
+        throw new Error("Client not connected");
+      }
     }
 
     const parsed = JSON.parse(message);
