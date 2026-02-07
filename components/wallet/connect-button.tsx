@@ -1,7 +1,8 @@
 "use client";
 
 import { usePrivy, useWallets } from "@privy-io/react-auth";
-import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { env } from "@/env";
@@ -12,9 +13,12 @@ const PRIVY_CONFIGURED = !!env.NEXT_PUBLIC_PRIVY_APP_ID;
 function PrivyConnectButton() {
   const { ready, authenticated, login, logout } = usePrivy();
   const { wallets } = useWallets();
+  const router = useRouter();
+  const pathname = usePathname();
   const setAddress = useUserStore((state) => state.setAddress);
   const reset = useUserStore((state) => state.reset);
   const [isConnecting, setIsConnecting] = useState(false);
+  const wasConnecting = useRef(false);
 
   const wallet = wallets[0];
   const address = wallet?.address;
@@ -22,16 +26,22 @@ function PrivyConnectButton() {
   useEffect(() => {
     if (address) {
       setAddress(address);
+      if (wasConnecting.current && pathname === "/") {
+        router.push("/markets");
+      }
+      wasConnecting.current = false;
       setIsConnecting(false);
     }
-  }, [address, setAddress]);
+  }, [address, setAddress, pathname, router]);
 
   function handleConnect() {
     setIsConnecting(true);
+    wasConnecting.current = true;
     try {
       login();
     } catch {
       setIsConnecting(false);
+      wasConnecting.current = false;
     }
   }
 
@@ -77,7 +87,7 @@ function PrivyConnectButton() {
             logout();
             reset();
           }}
-          className="rounded-lg border border-pulse-black/20 bg-white/50 px-4 py-2 text-xs font-medium text-pulse-black shadow-sm backdrop-blur-sm transition-colors hover:bg-white/70"
+          className="rounded-lg border border-pulse-black/20 bg-white/50 px-4 py-2 text-xs font-medium text-pulse-black shadow-sm backdrop-blur-sm transition-colors hover:bg-white/70 dark:bg-white/10 dark:hover:bg-white/20"
         >
           Disconnect
         </Button>

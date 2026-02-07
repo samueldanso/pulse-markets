@@ -61,6 +61,8 @@ html {
   --color-pulse-lime-700: var(--pulse-lime-700);
   --color-pulse-lime-800: var(--pulse-lime-800);
   --color-pulse-lime-900: var(--pulse-lime-900);
+  --color-pulse-up: var(--pulse-up);
+  --color-pulse-down: var(--pulse-down);
   --animate-fade-in-up: fade-in-up 0.6s ease-out forwards;
 }
 
@@ -89,6 +91,8 @@ html {
   --pulse-lime-700: #7d8c06;
   --pulse-lime-800: #626e0a;
   --pulse-lime-900: #515c0d;
+  --pulse-up: #22c55e;
+  --pulse-down: #ef4444;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -124,6 +128,11 @@ html {
 }
 
 .dark {
+  --pulse-bg: #0a0a0a;
+  --pulse-black: #f5f5f5;
+  --pulse-gray: #a3a3a3;
+  --pulse-up: #4ade80;
+  --pulse-down: #f87171;
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
