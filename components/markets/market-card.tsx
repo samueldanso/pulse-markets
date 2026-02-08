@@ -96,13 +96,15 @@ export function MarketCard(props: MarketCardProps) {
 			<div className="flex items-start justify-between px-4 pt-4 pb-2">
 				<div className="flex min-w-0 flex-1 items-center gap-3">
 					{iconSrc && (
-						<Image
-							src={iconSrc}
-							alt={props.topic}
-							width={36}
-							height={36}
-							className="shrink-0 rounded-full"
-						/>
+						<div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full">
+							<Image
+								src={iconSrc}
+								alt={props.topic}
+								width={36}
+								height={36}
+								className="h-full w-full object-cover object-center"
+							/>
+						</div>
 					)}
 					<div className="min-w-0">
 						<h3 className="truncate text-sm font-semibold text-pulse-black">
@@ -127,12 +129,12 @@ export function MarketCard(props: MarketCardProps) {
 			</div>
 
 			{/* Sparkline chart fills middle space */}
-			<div className="flex-1">
+			<div className="flex flex-1 flex-col justify-center pt-5">
 				<SparklineChart
 					data={sparklineData}
 					isPositive={isPositive}
 					variant="card"
-					height={100}
+					height={140}
 				/>
 			</div>
 

@@ -58,17 +58,17 @@ Yellow Network provides state channels (ClearNode + Nitrolite SDK) so that users
 
 ## File Tree: `lib/yellow/`
 
-| File | Purpose |
-|------|---------|
-| **auth.ts** | `generateSessionKey()` — creates ECDSA key pair for ClearNode auth; `getSessionExpiry()` — session expiry timestamp. Used by `client.ts` for authentication. |
-| **channels.ts** | `createChannel()`, `getOrCreateChannel()`, `getChannels()`, `allocateToChannel()`, `deallocateFromChannel()`. Channel lifecycle and fund allocation; used by yellow-service for user balance and deposits. |
-| **client.ts** | `YellowClient` class: WebSocket connection to ClearNode, EIP-712 auth flow, `sendMessage()`, `fetchLedgerBalances()`. Single client instance per server, connected with operator wallet. |
-| **constants.ts** | `CLEARNODE_URL` (sandbox vs mainnet from `YELLOW_NETWORK`), `YELLOW_ASSET` (usdc / ytest.usd), `CUSTODY_ADDRESS`, `ADJUDICATOR_ADDRESS`, `USDC_ADDRESS`, `SESSION_DURATION`, `CHALLENGE_PERIOD`, `APP_NAME`, `AUTH_SCOPE`, protocol version. |
-| **deposit.ts** | `depositToCustody()` — on-chain USDC deposit to Yellow custody via NitroliteClient; `getCustodyBalance()`, `getWalletUSDCBalance()`. Used by frontend deposit flow. |
-| **sessions.ts** | Pool-based app sessions: `createMarketSession()`, `addBetToMarket()`, `calculateProportionalDistribution()`, `settleMarketSession()`. Core market logic; called by yellow-service. |
-| **types.ts** | `SessionKey`, `YellowClientConfig`, `ChannelInfo`, `MarketPool`, `MarketSession`, `PoolBetParams`, `ProportionalDistribution`, `SettlementOutcome`, `UnifiedBalance`, etc. |
-| **index.ts** | Re-exports all public API from the above modules. |
-| **__tests__/sessions.test.ts** | Unit tests for proportional distribution and session logic. |
+| File                           | Purpose                                                                                                                                                                                                                                      |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **auth.ts**                    | `generateSessionKey()` — creates ECDSA key pair for ClearNode auth; `getSessionExpiry()` — session expiry timestamp. Used by `client.ts` for authentication.                                                                                 |
+| **channels.ts**                | `createChannel()`, `getOrCreateChannel()`, `getChannels()`, `allocateToChannel()`, `deallocateFromChannel()`. Channel lifecycle and fund allocation; used by yellow-service for user balance and deposits.                                   |
+| **client.ts**                  | `YellowClient` class: WebSocket connection to ClearNode, EIP-712 auth flow, `sendMessage()`, `fetchLedgerBalances()`. Single client instance per server, connected with operator wallet.                                                     |
+| **constants.ts**               | `CLEARNODE_URL` (sandbox vs mainnet from `YELLOW_NETWORK`), `YELLOW_ASSET` (usdc / ytest.usd), `CUSTODY_ADDRESS`, `ADJUDICATOR_ADDRESS`, `USDC_ADDRESS`, `SESSION_DURATION`, `CHALLENGE_PERIOD`, `APP_NAME`, `AUTH_SCOPE`, protocol version. |
+| **deposit.ts**                 | `depositToCustody()` — on-chain USDC deposit to Yellow custody via NitroliteClient; `getCustodyBalance()`, `getWalletUSDCBalance()`. Used by frontend deposit flow.                                                                          |
+| **sessions.ts**                | Pool-based app sessions: `createMarketSession()`, `addBetToMarket()`, `calculateProportionalDistribution()`, `settleMarketSession()`. Core market logic; called by yellow-service.                                                           |
+| **types.ts**                   | `SessionKey`, `YellowClientConfig`, `ChannelInfo`, `MarketPool`, `MarketSession`, `PoolBetParams`, `ProportionalDistribution`, `SettlementOutcome`, `UnifiedBalance`, etc.                                                                   |
+| **index.ts**                   | Re-exports all public API from the above modules.                                                                                                                                                                                            |
+| ****tests**/sessions.test.ts** | Unit tests for proportional distribution and session logic.                                                                                                                                                                                  |
 
 ---
 
@@ -84,16 +84,16 @@ Yellow Network provides state channels (ClearNode + Nitrolite SDK) so that users
 
 ### 2. API Routes
 
-| Route | Yellow usage |
-|-------|--------------|
-| `POST /api/yellow/deposit` | `yellowService.depositForUser(userAddress, amount, txHash)` |
-| `POST /api/yellow/withdraw` | `yellowService.withdrawForUser(userAddress, amount)` |
-| `GET /api/yellow/balance?address=` | `yellowService.syncCustodyBalance` + `getUserBalance` |
-| `GET /api/yellow/custody-balance?address=` | Reads custody contract on Base (viem) |
-| `GET /api/yellow/config` | `yellowService.getNetworkConfig()` |
-| `GET /api/markets/:id/pools` | `yellowService.getMarketPools(id)` |
-| `POST /api/markets/:id/bet` | `yellowService.placeBet({ marketId, userAddress, side, amount })` |
-| `POST /api/settle/:marketId` | Attention data + AI settlement → `yellowService.settleMarket(...)` |
+| Route                                      | Yellow usage                                                       |
+| ------------------------------------------ | ------------------------------------------------------------------ |
+| `POST /api/yellow/deposit`                 | `yellowService.depositForUser(userAddress, amount, txHash)`        |
+| `POST /api/yellow/withdraw`                | `yellowService.withdrawForUser(userAddress, amount)`               |
+| `GET /api/yellow/balance?address=`         | `yellowService.syncCustodyBalance` + `getUserBalance`              |
+| `GET /api/yellow/custody-balance?address=` | Reads custody contract on Base (viem)                              |
+| `GET /api/yellow/config`                   | `yellowService.getNetworkConfig()`                                 |
+| `GET /api/markets/:id/pools`               | `yellowService.getMarketPools(id)`                                 |
+| `POST /api/markets/:id/bet`                | `yellowService.placeBet({ marketId, userAddress, side, amount })`  |
+| `POST /api/settle/:marketId`               | Attention data + AI settlement → `yellowService.settleMarket(...)` |
 
 ### 3. Frontend
 
@@ -108,81 +108,81 @@ Yellow Network provides state channels (ClearNode + Nitrolite SDK) so that users
 
 ### `lib/yellow/sessions.ts`
 
-- **createMarketSession(client, marketId, operatorAddress, userAddress)**  
+- **createMarketSession(client, marketId, operatorAddress, userAddress)**
   Creates one Nitrolite app session per market. Starts with two participants (operator + first user), weights 50/50, quorum 50. Sends `createAppSessionMessage` via client; returns `MarketSession` with `sessionId`, empty UP/DOWN pools.
 
-- **addBetToMarket(client, session, { userAddress, side, amount })**  
+- **addBetToMarket(client, session, { userAddress, side, amount })**
   If user not in session, adds participant and allocation. Updates `session.upPool` or `session.downPool` (participants, amounts, totalAmount). Sends `createSubmitAppStateMessage` with new allocations. One bet per user per market.
 
-- **calculateProportionalDistribution(upPool, downPool, winner, protocolFeePercent)**  
+- **calculateProportionalDistribution(upPool, downPool, winner, protocolFeePercent)**
   Pure function. Winning side’s participants receive share of `(totalPot - fee)` proportional to their stake. Returns `ProportionalDistribution[]` (participant, side, stakeAmount, payoutAmount, profitPercent).
 
-- **settleMarketSession(client, session, outcome)**  
+- **settleMarketSession(client, session, outcome)**
   Builds final allocations from `outcome.distributions`, sends `createCloseAppSessionMessage`. Closes app session on Yellow; funds move according to adjudicator.
 
 ### `lib/yellow/client.ts`
 
-- **YellowClient.connect(walletClient)**  
+- **YellowClient.connect(walletClient)**
   Opens WebSocket to `config.clearNodeUrl`, generates session key, runs EIP-712 auth (auth request → challenge → verify). Required before any RPC.
 
-- **YellowClient.sendMessage(message)**  
+- **YellowClient.sendMessage(message)**
   Sends JSON-RPC message, waits for response. Used by sessions and channels for all Nitrolite RPCs.
 
-- **YellowClient.fetchLedgerBalances()**  
+- **YellowClient.fetchLedgerBalances()**
   Returns unified ledger balances (used for display/sync).
 
 ### `lib/yellow/channels.ts`
 
-- **getOrCreateChannel(client, asset, chainId)**  
+- **getOrCreateChannel(client, asset, chainId)**
   Fetches channels; if none, creates one. Used so user balance has a channel to allocate to.
 
-- **allocateToChannel(client, channelId, participant, asset, amount)**  
+- **allocateToChannel(client, channelId, participant, asset, amount)**
   Increases allocation to a participant in a channel (off-chain).
 
-- **deallocateFromChannel(client, channelId, participant, asset, amount)**  
+- **deallocateFromChannel(client, channelId, participant, asset, amount)**
   Decreases allocation (e.g. on withdraw).
 
 ### `lib/yellow/deposit.ts`
 
-- **depositToCustody(walletClient, publicClient, amount)**  
+- **depositToCustody(walletClient, publicClient, amount)**
   On-chain: user approves USDC and deposits to Yellow custody contract. Returns tx hash. Frontend calls this before or in parallel with `POST /api/yellow/deposit` so the server can credit the same amount off-chain.
 
 ---
 
 ## How It Works (End-to-End)
 
-1. **Operator / server**  
+1. **Operator / server**
    Server starts; when first Yellow operation is needed, `YellowService.initialize()` runs: creates `YellowClient`, connects with `PRIVATE_KEY` wallet to ClearNode, authenticates. One client for the app.
 
-2. **User deposit**  
+2. **User deposit**
    User signs on-chain deposit to custody (via DepositModal using `depositToCustody`). Then frontend calls `POST /api/yellow/deposit` with `userAddress` and `amount`. Server credits that amount in `userStates` and ensures user has a channel (getOrCreateChannel + allocate).
 
-3. **User places bet**  
+3. **User places bet**
    Frontend calls `POST /api/markets/:id/bet` with `userAddress`, `side` (UP/DOWN), `amount`. Server: gets or creates market session (createMarketSession or addBetToMarket), updates session’s UP/DOWN pool, submits new app state to Yellow, debits user balance and allocates to market session. Response returns updated pools.
 
-4. **Market expires**  
+4. **Market expires**
    Market page shows countdown. When timer hits zero, page can auto-call or user clicks Settle → `POST /api/settle/:marketId`.
 
-5. **Settlement**  
+5. **Settlement**
    Server: fetches attention data (LunarCrush or mock), runs deterministic rules (threshold vs current value) → winner UP or DOWN. Generates AI reasoning (OpenAI). Computes `calculateProportionalDistribution(upPool, downPool, winner, fee)`. Calls `settleMarketSession(client, session, outcome)`, then credits each winner via `creditUserBalance`. Market marked closed.
 
-6. **Withdraw**  
+6. **Withdraw**
    User clicks Withdraw, enters amount. Frontend calls `POST /api/yellow/withdraw`. Server debits balance; user can then pull funds on-chain (custody → wallet) in a separate flow.
 
 ---
 
 ## Data Flow Summary
 
-| Step | Where | Yellow / Nitrolite |
-|------|--------|--------------------|
-| Connect | server | YellowClient.connect(operatorWallet) |
-| User deposit (on-chain) | frontend | depositToCustody() → custody contract |
-| Credit user | server | userStates + getOrCreateChannel + allocateToChannel |
-| Place bet | server | createMarketSession / addBetToMarket → SubmitAppState |
-| Get pools | server | In-memory session.upPool / downPool |
-| Settle | server | calculateProportionalDistribution → settleMarketSession → CloseAppSession |
-| Credit winners | server | creditUserBalance (in-memory; withdraw is separate) |
-| Withdraw (debit) | server | withdrawForUser (balance decrease; on-chain withdraw is user-driven) |
+| Step                    | Where    | Yellow / Nitrolite                                                        |
+| ----------------------- | -------- | ------------------------------------------------------------------------- |
+| Connect                 | server   | YellowClient.connect(operatorWallet)                                      |
+| User deposit (on-chain) | frontend | depositToCustody() → custody contract                                     |
+| Credit user             | server   | userStates + getOrCreateChannel + allocateToChannel                       |
+| Place bet               | server   | createMarketSession / addBetToMarket → SubmitAppState                     |
+| Get pools               | server   | In-memory session.upPool / downPool                                       |
+| Settle                  | server   | calculateProportionalDistribution → settleMarketSession → CloseAppSession |
+| Credit winners          | server   | creditUserBalance (in-memory; withdraw is separate)                       |
+| Withdraw (debit)        | server   | withdrawForUser (balance decrease; on-chain withdraw is user-driven)      |
 
 ---
 

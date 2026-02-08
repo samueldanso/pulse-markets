@@ -224,26 +224,26 @@ pulse-markets/
 
 All routes are under `/api`. Base path is set in `server/index.ts`.
 
-| Method | Endpoint | Description |
-| ------ | -------- | ----------- |
-| **Health** | | |
-| GET | `/api/health` | Health check; returns `status`, `timestamp`, `yellow` (connected, authenticated), `agent` (registered, agentId) |
-| **Markets** | | |
-| GET | `/api/markets` | List all markets (id, question, pools, status, result, etc.) |
-| GET | `/api/markets/:id` | Single market with full detail (upBets, downBets, etc.) |
-| GET | `/api/markets/:id/pools` | Pool stats: upPool, downPool, totalPot, upPercentage, downPercentage, upParticipants, downParticipants |
-| POST | `/api/markets/:id/bet` | Place bet. Body: `{ userAddress, side: "UP" \| "DOWN", amount }`. Returns `success`, `bet`, `pools` |
-| **Settlement** | | |
-| POST | `/api/settle/:marketId` | Trigger AI settlement. Fetches attention data, runs rules, generates reasoning, settles Yellow session, credits winners. Returns winner, reasoning, distributions, agent proof |
-| **Yellow (state channels)** | | |
-| POST | `/api/yellow/deposit` | Credit user after on-chain deposit. Body: `{ userAddress, amount, txHash? }`. Returns balance, channelId |
-| POST | `/api/yellow/withdraw` | Debit user (withdraw from channel). Body: `{ userAddress, amount }`. Returns balance |
-| GET | `/api/yellow/balance?address=` | Get user's channel balance and status (syncs from custody). Returns balance, channelId, connected, authenticated |
-| GET | `/api/yellow/custody-balance?address=` | On-chain custody contract balance for address (USDC) |
-| GET | `/api/yellow/config` | Yellow network config (chain, custody, etc.) |
-| **Agent (ERC-8004)** | | |
-| GET | `/api/agent/.well-known/agent-card.json` | Agent card for A2A discovery |
-| POST | `/api/agent/a2a` | JSON-RPC 2.0 (e.g. message/send, tasks/get) for agent-to-agent messaging |
+| Method                      | Endpoint                                 | Description                                                                                                                                                                    |
+| --------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Health**                  |                                          |                                                                                                                                                                                |
+| GET                         | `/api/health`                            | Health check; returns `status`, `timestamp`, `yellow` (connected, authenticated), `agent` (registered, agentId)                                                                |
+| **Markets**                 |                                          |                                                                                                                                                                                |
+| GET                         | `/api/markets`                           | List all markets (id, question, pools, status, result, etc.)                                                                                                                   |
+| GET                         | `/api/markets/:id`                       | Single market with full detail (upBets, downBets, etc.)                                                                                                                        |
+| GET                         | `/api/markets/:id/pools`                 | Pool stats: upPool, downPool, totalPot, upPercentage, downPercentage, upParticipants, downParticipants                                                                         |
+| POST                        | `/api/markets/:id/bet`                   | Place bet. Body: `{ userAddress, side: "UP" \| "DOWN", amount }`. Returns `success`, `bet`, `pools`                                                                            |
+| **Settlement**              |                                          |                                                                                                                                                                                |
+| POST                        | `/api/settle/:marketId`                  | Trigger AI settlement. Fetches attention data, runs rules, generates reasoning, settles Yellow session, credits winners. Returns winner, reasoning, distributions, agent proof |
+| **Yellow (state channels)** |                                          |                                                                                                                                                                                |
+| POST                        | `/api/yellow/deposit`                    | Credit user after on-chain deposit. Body: `{ userAddress, amount, txHash? }`. Returns balance, channelId                                                                       |
+| POST                        | `/api/yellow/withdraw`                   | Debit user (withdraw from channel). Body: `{ userAddress, amount }`. Returns balance                                                                                           |
+| GET                         | `/api/yellow/balance?address=`           | Get user's channel balance and status (syncs from custody). Returns balance, channelId, connected, authenticated                                                               |
+| GET                         | `/api/yellow/custody-balance?address=`   | On-chain custody contract balance for address (USDC)                                                                                                                           |
+| GET                         | `/api/yellow/config`                     | Yellow network config (chain, custody, etc.)                                                                                                                                   |
+| **Agent (ERC-8004)**        |                                          |                                                                                                                                                                                |
+| GET                         | `/api/agent/.well-known/agent-card.json` | Agent card for A2A discovery                                                                                                                                                   |
+| POST                        | `/api/agent/a2a`                         | JSON-RPC 2.0 (e.g. message/send, tasks/get) for agent-to-agent messaging                                                                                                       |
 
 ---
 
@@ -270,21 +270,21 @@ bun install
 
 Validated via `env.ts` (T3 env). Create `.env` in the project root.
 
-| Variable | Required | Description |
-| -------- | -------- | ----------- |
-| `NEXT_PUBLIC_APP_URL` | Yes | App URL (e.g. `https://pulsemarkets-fi.vercel.app` or `http://localhost:3000`) |
-| `NEXT_PUBLIC_PRIVY_APP_ID` | Yes | Privy app ID ([dashboard](https://dashboard.privy.io)) |
-| `NEXT_PUBLIC_CLEARNODE_WS_URL` | No | Yellow mainnet WebSocket (default from `lib/yellow/constants`: `wss://clearnet.yellow.com/ws`) |
-| `NEXT_PUBLIC_CLEARNODE_SANDBOX_WS_URL` | No | Yellow sandbox WebSocket (`wss://clearnet-sandbox.yellow.com/ws`) |
-| `NEXT_PUBLIC_USDC_ADDRESS` | No | USDC on Base (default in constants) |
-| `NEXT_PUBLIC_YELLOW_CHAIN_ID` | No | Chain ID for Yellow (Base = 8453) |
-| `PRIVATE_KEY` | No* | Operator wallet private key (hex). *Required for Yellow deposits/betting and ERC-8004 agent |
-| `WALLET_ADDRESS` | No* | Same as wallet for `PRIVATE_KEY`. *Required for agent registration |
-| `OPENAI_API_KEY` | No* | OpenAI API key. *Required for AI settlement reasoning |
-| `LUNARCRUSH_API_KEY` | No | LunarCrush API key (mock used if missing) |
-| `PINATA_JWT` | No | For ERC-8004 agent metadata on IPFS |
-| `AGENT_ID` | No | ERC-8004 agent ID after registration |
-| `YELLOW_NETWORK` | No | `sandbox` or `mainnet` (default: `sandbox`) |
+| Variable                               | Required | Description                                                                                    |
+| -------------------------------------- | -------- | ---------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_APP_URL`                  | Yes      | App URL (e.g. `https://pulsemarkets-fi.vercel.app` or `http://localhost:3000`)                 |
+| `NEXT_PUBLIC_PRIVY_APP_ID`             | Yes      | Privy app ID ([dashboard](https://dashboard.privy.io))                                         |
+| `NEXT_PUBLIC_CLEARNODE_WS_URL`         | No       | Yellow mainnet WebSocket (default from `lib/yellow/constants`: `wss://clearnet.yellow.com/ws`) |
+| `NEXT_PUBLIC_CLEARNODE_SANDBOX_WS_URL` | No       | Yellow sandbox WebSocket (`wss://clearnet-sandbox.yellow.com/ws`)                              |
+| `NEXT_PUBLIC_USDC_ADDRESS`             | No       | USDC on Base (default in constants)                                                            |
+| `NEXT_PUBLIC_YELLOW_CHAIN_ID`          | No       | Chain ID for Yellow (Base = 8453)                                                              |
+| `PRIVATE_KEY`                          | No\*     | Operator wallet private key (hex). \*Required for Yellow deposits/betting and ERC-8004 agent   |
+| `WALLET_ADDRESS`                       | No\*     | Same as wallet for `PRIVATE_KEY`. \*Required for agent registration                            |
+| `OPENAI_API_KEY`                       | No\*     | OpenAI API key. \*Required for AI settlement reasoning                                         |
+| `LUNARCRUSH_API_KEY`                   | No       | LunarCrush API key (mock used if missing)                                                      |
+| `PINATA_JWT`                           | No       | For ERC-8004 agent metadata on IPFS                                                            |
+| `AGENT_ID`                             | No       | ERC-8004 agent ID after registration                                                           |
+| `YELLOW_NETWORK`                       | No       | `sandbox` or `mainnet` (default: `sandbox`)                                                    |
 
 **Example `.env`:**
 
@@ -365,7 +365,7 @@ All detailed docs are in the `/docs` directory:
 | [**Architecture**](/docs/01-architecture.md)             | System design, layers, and data flow diagrams |
 | [**Yellow Integration**](/docs/02-yellow-integration.md) | Yellow SDK State Channels implementation      |
 | [**ERC-8004 Agents**](/docs/03-8004-agent.md)            | AI agent settlement system                    |
-| [**Demo Script**](/resources/demo-script.md)            | Hackathon demo flow and talking points       |
+| [**Testing**](/docs/05-testing.md.md)                    | Testing guide                                 |
 
 ---
 
