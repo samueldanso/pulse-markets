@@ -5,11 +5,15 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  yellowScanAddressUrl,
+  yellowScanChannelUrl,
+} from "@/lib/explorer-links";
 import { useUserStore } from "@/stores/user-store";
 
 export default function DashboardPage() {
   const { authenticated, login } = usePrivy();
-  const { balance, channelId, positions } = useUserStore();
+  const { address, balance, channelId, positions } = useUserStore();
 
   if (!authenticated) {
     return (
@@ -49,6 +53,18 @@ export default function DashboardPage() {
             {channelId && (
               <p className="mt-1 text-[10px] text-pulse-gray">
                 Channel: {channelId.slice(0, 16)}...
+              </p>
+            )}
+            {(address || channelId) && (
+              <p className="mt-2">
+                <a
+                  href={address ? yellowScanAddressUrl(address) : channelId ? yellowScanChannelUrl(channelId) : "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-medium text-pulse-lime-600 hover:underline dark:text-pulse-lime-400"
+                >
+                  View on Yellow Scan →
+                </a>
               </p>
             )}
           </CardContent>

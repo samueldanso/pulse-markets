@@ -10,6 +10,21 @@
 
 ---
 
+## 🔍 Testing Examples
+
+You can verify Yellow and ERC-8004 integration without running the app:
+
+| What                                          | Link                                                                                                                       |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **Yellow Scan** (state channels, sessions)    | [yellowscan.io](https://yellowscan.io) — search by **address**, **channel ID**, or **session ID** to see activity.         |
+| **Sample session** (app session from testing) | [Session on Yellow Scan](https://yellowscan.io/session/0x940b92cfe440f51f3bd9e7d01ba8fb1ae681e20ba785c89c79ac3fc15b421048) |
+| **Sample wallet** (wallet from testing)       | [Wallet on Yellow Scan](https://yellowscan.io/https://yellowscan.io/address/0xA44Fa8Ad3e905C8AB525cd0cb14319017F1e04e5)    |
+| **ERC-8004 Agent** (settlement agent on Base) | [Agent on 8004scan](https://www.8004scan.io/agents/base/2373) — on-chain identity and reputation.                          |
+
+In the app, the **Dashboard** shows a **View on Yellow Scan** link (by your wallet address) so you can see your sessions and channels. Settlement responses include an `agent` object with `registryUrl` pointing to 8004scan.
+
+---
+
 ## 🔮 Overview
 
 PulseMarkets is a real-time prediction market where users trade social attention and narratives instead of traditional outcomes. Built on Yellow Network's state channels (ERC-7824) with autonomous AI agent settlement (ERC-8004), PulseMarkets enables instant, gasless micro-bets on sentiment shifts, narrative momentum, and viral potential.
@@ -365,7 +380,7 @@ All detailed docs are in the `/docs` directory:
 | [**Architecture**](/docs/01-architecture.md)             | System design, layers, and data flow diagrams |
 | [**Yellow Integration**](/docs/02-yellow-integration.md) | Yellow SDK State Channels implementation      |
 | [**ERC-8004 Agents**](/docs/03-8004-agent.md)            | AI agent settlement system                    |
-| [**Testing**](/docs/05-testing.md.md)                    | Testing guide                                 |
+| [**Testing**](/docs/05-testing.md)                       | Testing guide                                 |
 
 ---
 

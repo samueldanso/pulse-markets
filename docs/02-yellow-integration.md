@@ -194,6 +194,16 @@ Yellow Network provides state channels (ClearNode + Nitrolite SDK) so that users
 
 ---
 
+## Verification (Yellow Scan)
+
+**[Yellow Scan](https://yellowscan.io)** is the explorer for Yellow Network. You can verify activity by **address**, **channel ID**, or **session ID**.
+
+- **By address:** [yellowscan.io/address/0x...](https://yellowscan.io) — shows all channels and app sessions for that wallet. In the app, the Dashboard shows a **View on Yellow Scan** link (and the ChannelStatus pill in the navbar has a **Scan** link when connected).
+- **By session ID:** [yellowscan.io/session/0x...](https://yellowscan.io/session/0x940b92cfe440f51f3bd9e7d01ba8fb1ae681e20ba785c89c79ac3fc15b421048) — sample from testing.
+- **Channels vs sessions:** App **sessions** (one per market) are created and visible on Yellow Scan when users place bets. **Payment channels** are created in our flow via RPC `createChannel` and used for allocate/deallocate; the full on-chain channel creation step (as in the Nitrolite tutorial with `NitroliteClient.createChannel`) is not yet implemented, so Yellow Scan may show **0 channels** and **N sessions** for an address. Functionally, deposits and bets work; channel IDs may appear once the on-chain channel creation is wired.
+
+---
+
 ## References
 
 - [ERC-7824 / Nitrolite](https://erc7824.org/)
