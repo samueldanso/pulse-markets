@@ -50,7 +50,7 @@ PulseMarkets introduces **attention prediction markets** with three innovations:
 - “Will this meme hit trending before midnight?”
 - “Will AI Agents narrative sentiment flip positive by EOD?”
 
-MVP ships with **3 curated markets** (sentiment, narrative, viral) and **15-minute demo timers** so judges can see settlement during the demo.
+MVP ships with **3 curated markets** (sentiment, narrative, viral) and **5-minute demo timers** so judges can see settlement during the demo.
 
 ---
 

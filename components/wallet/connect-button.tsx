@@ -99,7 +99,7 @@ function PrivyConnectButton() {
     <Button
       onClick={handleConnect}
       disabled={isConnecting}
-      className="gap-2 rounded-lg bg-pulse-black px-5 py-2.5 text-xs font-semibold text-white shadow-lg shadow-black/5 transition-opacity hover:bg-black/80 disabled:opacity-70"
+      className="gap-2 rounded-lg bg-pulse-black px-5 py-2.5 text-xs font-semibold text-white shadow-lg shadow-black/5 transition-opacity hover:bg-black/80 disabled:opacity-70 dark:bg-pulse-lime-400 dark:text-pulse-black dark:shadow-none dark:hover:bg-pulse-lime-300"
     >
       {isConnecting ? (
         <>
@@ -135,12 +135,12 @@ function PrivyConnectButton() {
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
-            <path
-              d="M6 1V3.5M6 1C4.5 1 1 1.5 1 6C1 10.5 4.5 11 6 11M6 1C7.5 1 11 1.5 11 6C11 10.5 7.5 11 6 11M6 11V8.5"
-              stroke="white"
-              strokeWidth="1.2"
-              strokeLinecap="round"
-            />
+          <path
+            d="M6 1V3.5M6 1C4.5 1 1 1.5 1 6C1 10.5 4.5 11 6 11M6 1C7.5 1 11 1.5 11 6C11 10.5 7.5 11 6 11M6 11V8.5"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+          />
           </svg>
         </>
       )}

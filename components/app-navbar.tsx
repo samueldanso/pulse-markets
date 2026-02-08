@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 const NAV_LINKS = [
   { href: "/markets", label: "Markets" },
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/leaderboard", label: "Leaderboard" },
 ];
 
 export function AppNavbar() {

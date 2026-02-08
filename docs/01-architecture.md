@@ -62,11 +62,11 @@ System design, layers, data flow, and project structure.
 
 ## Component Summary
 
-| Component | Description |
-|-----------|-------------|
-| **Asset** | Attention / narrative momentum (not price) |
-| **Execution** | Instant & gasless via Yellow state channels (Nitrolite SDK) |
-| **Settlement** | AI agent with ERC-8004 on-chain identity and reputation |
+| Component      | Description                                                 |
+| -------------- | ----------------------------------------------------------- |
+| **Asset**      | Attention / narrative momentum (not price)                  |
+| **Execution**  | Instant & gasless via Yellow state channels (Nitrolite SDK) |
+| **Settlement** | AI agent with ERC-8004 on-chain identity and reputation     |
 
 ## Data Flow
 
@@ -79,31 +79,31 @@ System design, layers, data flow, and project structure.
 
 ### Settlement Flow
 
-1. Market timer expires → “Settle” becomes available.
+1. Market timer expires → “Settle” becomes available (or auto-triggers on the market page).
 2. Client calls `POST /api/settle/:marketId`.
 3. Server: fetch attention data (LunarCrush / fallback), run threshold rules → UP/DOWN.
 4. Server: generate AI reasoning (OpenAI), optionally log to ERC-8004 registry.
 5. Payouts computed: `userPayout = (userStake / totalWinningPool) × (totalPot - protocolFee)`.
-6. Yellow session closes; funds distributed on-chain.
+6. Winners’ balances are credited in the Yellow service state; Yellow session can close and funds move on-chain on withdraw.
 
 ## Tech Stack (By Layer)
 
-| Layer | Technology | Purpose |
-|-------|------------|---------|
-| **Runtime** | Bun | Package manager + runtime |
-| **Frontend** | Next.js 15, React 19, TypeScript | App framework |
-| **API** | Hono (inside Next.js catch-all) | API routes |
-| **Styling** | Tailwind CSS v4, shadcn/ui | UI |
-| **Wallet** | Privy, wagmi, viem | Auth + wallet |
-| **State** | Zustand | Client state |
-| **WebSocket** | yellow-ts | Yellow ClearNode transport |
-| **Yellow SDK** | @erc7824/nitrolite | State channels (ERC-7824) |
-| **AI** | AI SDK + OpenAI (gpt-4o-mini) | Settlement reasoning |
-| **Data** | LunarCrush (free tier) + public APIs | Attention metrics |
-| **Chain** | Base | Settlement chain |
-| **Token** | USDC | Betting currency |
-| **Linter** | Biome | Lint + format |
-| **Deployment** | Vercel (Bun runtime) | Hosting |
+| Layer          | Technology                           | Purpose                    |
+| -------------- | ------------------------------------ | -------------------------- |
+| **Runtime**    | Bun                                  | Package manager + runtime  |
+| **Frontend**   | Next.js 15, React 19, TypeScript     | App framework              |
+| **API**        | Hono (inside Next.js catch-all)      | API routes                 |
+| **Styling**    | Tailwind CSS v4, shadcn/ui           | UI                         |
+| **Wallet**     | Privy, wagmi, viem                   | Auth + wallet              |
+| **State**      | Zustand                              | Client state               |
+| **WebSocket**  | yellow-ts                            | Yellow ClearNode transport |
+| **Yellow SDK** | @erc7824/nitrolite                   | State channels (ERC-7824)  |
+| **AI**         | AI SDK + OpenAI (gpt-4o-mini)        | Settlement reasoning       |
+| **Data**       | LunarCrush (free tier) + public APIs | Attention metrics          |
+| **Chain**      | Base                                 | Settlement chain           |
+| **Token**      | USDC                                 | Betting currency           |
+| **Linter**     | Biome                                | Lint + format              |
+| **Deployment** | Vercel (Bun runtime)                 | Hosting                    |
 
 ## Project Structure
 
@@ -145,12 +145,12 @@ pulse-markets/
 
 ## API Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/health` | Health check |
-| GET | `/api/markets` | List all markets |
-| GET | `/api/markets/:id` | Single market |
-| POST | `/api/settle/:marketId` | Trigger AI settlement |
+| Method | Endpoint                | Description           |
+| ------ | ----------------------- | --------------------- |
+| GET    | `/api/health`           | Health check          |
+| GET    | `/api/markets`          | List all markets      |
+| GET    | `/api/markets/:id`      | Single market         |
+| POST   | `/api/settle/:marketId` | Trigger AI settlement |
 
 API is mounted under `/api` via the Hono catch-all in `app/api/[[...route]]/route.ts`.
 

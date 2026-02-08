@@ -2,6 +2,7 @@
 
 import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import Link from "next/link";
 import { SceneContainer } from "@/components/scene/scene-container";
 import { Button } from "@/components/ui/button";
 
@@ -27,15 +28,17 @@ export function HowitWorksSection() {
         <div className="grid grid-cols-1 items-center gap-16 md:grid-cols-2">
           <div>
             <h2 className="mb-5 text-3xl font-medium text-pulse-black md:text-4xl">
-              Trade What&apos;s Trending
+              UP or DOWN. You Choose.
             </h2>
             <p className="mb-10 max-w-sm text-base font-medium leading-relaxed text-pulse-gray">
-              Find a topic the world is buzzing about and simply trade "UP" if
-              you think it grows, "DOWN" if you think it fades, win and make
-              profits.
+              Pick a market (e.g. Elon Musk Twitter Attention Index). Bet UP if attention
+              will grow, DOWN if it will fade. Winners split the pot
+              proportionally. Markets auto-settle when the timer hits zero.
             </p>
-            <Button className="h-12 flex items-center gap-2.5 rounded-xl bg-pulse-black px-7 py-3.5 text-xs font-semibold text-white transition-opacity hover:bg-black/80">
-              Explore Markets <ArrowRight />
+            <Button asChild className="h-12 flex items-center gap-2.5 rounded-xl bg-pulse-black px-7 py-3.5 text-xs font-semibold text-white transition-opacity hover:bg-black/80">
+              <Link href="/markets">
+                Explore Markets <ArrowRight />
+              </Link>
             </Button>
           </div>
 

@@ -54,7 +54,7 @@ export function SparklineChart({
 
   if (variant === "card") {
     return (
-      <ResponsiveContainer width="100%" height={height ?? 120}>
+      <ResponsiveContainer width="100%" height={height ?? 100}>
         <AreaChart
           data={data}
           margin={{ top: 4, right: 0, left: 0, bottom: 0 }}
@@ -79,7 +79,7 @@ export function SparklineChart({
   }
 
   return (
-    <ResponsiveContainer width="100%" height={height ?? 350}>
+    <ResponsiveContainer width="100%" height={height ?? 250}>
       <AreaChart
         data={data}
         margin={{ top: 10, right: 10, left: 0, bottom: 0 }}

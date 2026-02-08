@@ -7,15 +7,15 @@ export function createMarkets(): Market[] {
 
   return [
     {
-      id: "btc-sentiment",
-      question: "Bitcoin Attention Index",
+      id: "elon-twitter-attention",
+      question: "Elon Musk Twitter Attention Index",
       category: "sentiment",
-      topic: "BTC",
+      topic: "Elon Musk",
       createdAt: now,
       closesAt: now + DEMO_DURATION_MS,
       status: "open",
-      baseline: 65,
-      threshold: 5,
+      baseline: 43467,
+      threshold: 25,
       thresholdType: "percentage",
       upParticipants: [],
       upBets: [],

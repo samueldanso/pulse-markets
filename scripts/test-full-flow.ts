@@ -143,15 +143,15 @@ async function main() {
   console.log("Then test these:");
   console.log("  curl http://localhost:3000/api/health");
   console.log("  curl http://localhost:3000/api/markets");
-  console.log("  curl http://localhost:3000/api/markets/btc-sentiment/pools");
+  console.log("  curl http://localhost:3000/api/markets/elon-twitter-attention/pools");
   console.log(
-    "  curl -X POST http://localhost:3000/api/markets/btc-sentiment/bet \\",
+    "  curl -X POST http://localhost:3000/api/markets/elon-twitter-attention/bet \\",
   );
   console.log('    -H "Content-Type: application/json" \\');
   console.log(
     `    -d '{"userAddress":"${fakeUser1}","side":"UP","amount":"5000000"}'`,
   );
-  console.log("  curl -X POST http://localhost:3000/api/settle/btc-sentiment");
+  console.log("  curl -X POST http://localhost:3000/api/settle/elon-twitter-attention");
 
   // Cleanup
   await client.disconnect();

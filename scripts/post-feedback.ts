@@ -46,8 +46,8 @@ async function main() {
     agentId,
     95,
     "settlement",
-    "btc-sentiment",
-    "/api/settle/btc-attention",
+    "elon-twitter-attention",
+    "/api/settle/elon-twitter-attention",
   );
 
   console.log(`Transaction submitted: ${txHandle.hash}`);
@@ -61,7 +61,7 @@ async function main() {
   console.log("Block:", receipt.blockNumber);
   console.log("Agent ID:", agentId);
   console.log("Value: 95 (settlement quality score)");
-  console.log("Tags: settlement / btc-sentiment");
+  console.log("Tags: settlement / elon-twitter-attention");
   console.log("");
   console.log(
     `View on 8004scan: https://www.8004scan.io/agents/base/${agentId}`,

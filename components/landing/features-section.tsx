@@ -27,11 +27,12 @@ export function FeaturesSection() {
     >
       <div className="mb-20 text-center">
         <h2 className="mb-3 text-4xl font-medium tracking-tight md:text-5xl">
-          The Gateway to
+          Built for Speed & Clarity
         </h2>
-        <h2 className="text-4xl font-medium tracking-tight md:text-5xl">
-          Attention Trading
-        </h2>
+        <p className="mx-auto max-w-xl text-pulse-gray">
+          Gasless execution, pool-based markets, and autonomous AI settlement —
+          so you can trade what the crowd is watching.
+        </p>
       </div>
 
       <div className="grid h-auto grid-cols-1 gap-6 md:h-[640px] md:grid-cols-2">
@@ -41,8 +42,9 @@ export function FeaturesSection() {
               Gasless Micro-Bets
             </h3>
             <p className="max-w-xs text-sm font-medium leading-relaxed text-gray-400">
-              Place instant bets without gas fees via Yellow Network state
-              channels on Base. Sub-second execution.
+              Yellow Network state channels (ERC-7824) on Base. Deposit once,
+              place unlimited UP/DOWN bets with no wallet popups. Sub-second
+              execution.
             </p>
           </div>
           <div className="pointer-events-none absolute inset-0 top-20 flex items-center justify-center">
@@ -62,7 +64,8 @@ export function FeaturesSection() {
               AI Settlement
             </h3>
             <p className="text-xs font-medium leading-relaxed text-pulse-gray">
-              ERC-8004 agents resolve markets with transparent reasoning.
+              Timer expires → AI fetches data, applies rules, generates reasoning.
+              Auto-settle or manual. ERC-8004 on-chain identity.
             </p>
           </div>
         </div>
@@ -79,8 +82,8 @@ export function FeaturesSection() {
               Attention Data
             </h3>
             <p className="text-xs font-medium leading-relaxed text-pulse-gray">
-              Real-time metrics from social sentiment, search trends, and
-              narratives.
+              LunarCrush and public APIs for sentiment and narratives. Mock
+              fallback for demo. Threshold-based resolution (UP/DOWN).
             </p>
           </div>
         </div>
