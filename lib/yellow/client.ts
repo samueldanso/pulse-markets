@@ -282,11 +282,14 @@ export class YellowClient {
       }
     }
 
+    const ws = this.ws;
+    if (!ws) throw new Error("Client not connected");
+
     const parsed = JSON.parse(message);
     const requestId = parsed.req?.[0];
 
     if (requestId === undefined) {
-      this.ws.send(message);
+      ws.send(message);
       return { method: "unknown", params: {} };
     }
 
@@ -307,8 +310,8 @@ export class YellowClient {
         },
       });
 
-      if (!this.ws) return reject(new Error("WebSocket closed"));
-      this.ws.send(message);
+      if (ws.readyState !== WebSocket.OPEN) return reject(new Error("WebSocket closed"));
+      ws.send(message);
     });
   }
 
