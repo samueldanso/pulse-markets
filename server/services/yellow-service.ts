@@ -4,7 +4,9 @@
  * Connects to ClearNode with operator wallet, coordinates market sessions.
  */
 
-import { createWalletClient, http } from "viem";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { base } from "viem/chains";
 import { getMarketById, MARKETS } from "@/data/markets";
@@ -42,12 +44,44 @@ interface UserState {
   channelId: string | null;
 }
 
+const STATE_FILE = join(process.cwd(), ".yellow-state.json");
+
 class YellowService {
   private client: YellowClient | null = null;
   private sessions = new Map<string, MarketSession>();
   private userStates = new Map<string, UserState>();
   private initialized = false;
   private initializing: Promise<void> | null = null;
+
+  constructor() {
+    this.loadPersistedState();
+  }
+
+  private loadPersistedState(): void {
+    try {
+      if (existsSync(STATE_FILE)) {
+        const data = JSON.parse(readFileSync(STATE_FILE, "utf-8"));
+        for (const [key, value] of Object.entries(data)) {
+          this.userStates.set(key, value as UserState);
+        }
+        console.log(`[YellowService] Restored ${this.userStates.size} user states from disk`);
+      }
+    } catch {
+      console.warn("[YellowService] Failed to load persisted state");
+    }
+  }
+
+  private persistState(): void {
+    try {
+      const data: Record<string, UserState> = {};
+      for (const [key, value] of this.userStates.entries()) {
+        data[key] = value;
+      }
+      writeFileSync(STATE_FILE, JSON.stringify(data, null, 2));
+    } catch {
+      console.warn("[YellowService] Failed to persist state");
+    }
+  }
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
@@ -124,6 +158,7 @@ class YellowService {
     session: MarketSession;
   }> {
     const client = await this.ensureClient();
+    await this.syncCustodyBalance(params.userAddress);
     const market = getMarketById(params.marketId);
     if (!market) throw new Error(`Market not found: ${params.marketId}`);
     if (market.status !== "open") throw new Error(`Market is ${market.status}`);
@@ -285,6 +320,13 @@ class YellowService {
       }
     }
 
+    // Credit winners' balances
+    for (const dist of distributions) {
+      if (dist.payoutAmount > BigInt(0)) {
+        this.creditUserBalance(dist.participant, dist.payoutAmount.toString());
+      }
+    }
+
     // Update market state
     market.status = "closed";
     market.result = winner;
@@ -309,29 +351,67 @@ class YellowService {
     return (process.env.YELLOW_NETWORK || "sandbox") !== "mainnet";
   }
 
+  async syncCustodyBalance(address: string): Promise<void> {
+    if (this.isSandbox) return;
+
+    const state = this.getUserState(address);
+    if (BigInt(state.balance) > BigInt(0)) return;
+
+    try {
+      const publicClient = createPublicClient({ chain: base, transport: http() });
+      const result = await publicClient.readContract({
+        address: CUSTODY_ADDRESS,
+        abi: [
+          {
+            type: "function",
+            name: "getAccountsBalances",
+            inputs: [
+              { name: "accounts", type: "address[]" },
+              { name: "tokens", type: "address[]" },
+            ],
+            outputs: [{ name: "", type: "uint256[][]" }],
+            stateMutability: "view",
+          },
+        ] as const,
+        functionName: "getAccountsBalances",
+        args: [[address as `0x${string}`], [USDC_ADDRESS]],
+      });
+
+      const onChainBalance = result[0]?.[0] ?? BigInt(0);
+      if (onChainBalance > BigInt(0)) {
+        state.balance = onChainBalance.toString();
+        this.persistState();
+        console.log(`[YellowService] Synced custody balance for ${address}: ${state.balance}`);
+      }
+    } catch (error) {
+      console.warn("[YellowService] Failed to sync custody balance:", error instanceof Error ? error.message : error);
+    }
+  }
+
   async depositForUser(
     address: string,
     amount: string,
     txHash?: string,
   ): Promise<{ balance: string; channelId: string | null }> {
+    const client = await this.ensureClient();
     const state = this.getUserState(address);
 
     if (this.isSandbox) {
-      const client = await this.ensureClient();
       await this.requestFaucetFunds(address);
-
-      let channelId = state.channelId;
-      if (!channelId) {
-        channelId = await getOrCreateChannel(client);
-        state.channelId = channelId;
-      }
-
-      await allocateToChannel(client, { channelId: channelId as `0x${string}`, amount });
     }
+
+    let channelId = state.channelId;
+    if (!channelId) {
+      channelId = await getOrCreateChannel(client);
+      state.channelId = channelId;
+    }
+
+    await allocateToChannel(client, { channelId: channelId as `0x${string}`, amount });
 
     const prev = BigInt(state.balance);
     const added = BigInt(amount);
     state.balance = (prev + added).toString();
+    this.persistState();
 
     const mode = this.isSandbox ? "sandbox" : "mainnet";
     const txInfo = txHash ? ` (tx: ${txHash})` : "";
@@ -346,7 +426,6 @@ class YellowService {
     address: string,
     amount: string,
   ): Promise<{ balance: string }> {
-    const client = await this.ensureClient();
     const state = this.getUserState(address);
 
     const current = BigInt(state.balance);
@@ -356,6 +435,7 @@ class YellowService {
     }
 
     if (state.channelId) {
+      const client = await this.ensureClient();
       await deallocateFromChannel(
         client,
         state.channelId as `0x${string}`,
@@ -369,9 +449,11 @@ class YellowService {
     if (newBalance === BigInt(0)) {
       state.channelId = null;
     }
+    this.persistState();
 
+    const mode = this.isSandbox ? "sandbox" : "mainnet";
     console.log(
-      `[YellowService] Withdrew ${amount} for ${address}. Balance: ${state.balance}`,
+      `[YellowService] Withdrew ${amount} for ${address} [${mode}]. Balance: ${state.balance}`,
     );
 
     return { balance: state.balance };
@@ -393,12 +475,14 @@ class YellowService {
       throw new Error("Insufficient balance");
     }
     state.balance = (current - deduction).toString();
+    this.persistState();
   }
 
   creditUserBalance(address: string, amount: string): void {
     const state = this.getUserState(address);
     const current = BigInt(state.balance);
     state.balance = (current + BigInt(amount)).toString();
+    this.persistState();
   }
 
   getNetworkConfig(): {

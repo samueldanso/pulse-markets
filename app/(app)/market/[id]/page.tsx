@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { BetInterface } from "@/components/markets/bet-interface";
 import { SparklineChart } from "@/components/markets/sparkline-chart";
@@ -154,6 +154,7 @@ export default function MarketDetailPage() {
 
   const countdown = useCountdown(market?.closesAt ?? 0);
   const isExpired = countdown === "Expired";
+  const autoSettledRef = useRef(false);
 
   const total = Number(pools?.upPool ?? 0) + Number(pools?.downPool ?? 0);
   const isPositive = total > 0
@@ -186,6 +187,21 @@ export default function MarketDetailPage() {
       setIsSettling(false);
     }
   }
+
+  useEffect(() => {
+    if (
+      isExpired &&
+      market &&
+      market.status !== "closed" &&
+      !settlement &&
+      !isSettling &&
+      !autoSettledRef.current &&
+      total > 0
+    ) {
+      autoSettledRef.current = true;
+      handleSettle();
+    }
+  });
 
   if (isLoading) {
     return (

@@ -3,8 +3,14 @@
 import { usePrivy } from "@privy-io/react-auth";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { parseUnits } from "viem";
-import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { erc20Abi, formatUnits, parseUnits } from "viem";
+import {
+  useAccount,
+  useReadContract,
+  useSwitchChain,
+  useWaitForTransactionReceipt,
+  useWriteContract,
+} from "wagmi";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,26 +26,14 @@ import { useUserStore } from "@/stores/user-store";
 
 const USDC_DECIMALS = 6;
 
-const ERC20_APPROVE_ABI = [
-  {
-    name: "approve",
-    type: "function",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "spender", type: "address" },
-      { name: "amount", type: "uint256" },
-    ],
-    outputs: [{ type: "bool" }],
-  },
-] as const;
-
 const CUSTODY_DEPOSIT_ABI = [
   {
     name: "deposit",
     type: "function",
     stateMutability: "payable",
     inputs: [
-      { name: "asset", type: "address" },
+      { name: "account", type: "address" },
+      { name: "token", type: "address" },
       { name: "amount", type: "uint256" },
     ],
     outputs: [],
@@ -48,6 +42,7 @@ const CUSTODY_DEPOSIT_ABI = [
 
 type DepositStep =
   | "idle"
+  | "switching"
   | "approving"
   | "depositing"
   | "registering"
@@ -57,26 +52,53 @@ type DepositStep =
 
 interface NetworkConfig {
   network: string;
+  chainId: number;
+  chainName: string;
   custodyAddress: string;
   usdcAddress: string;
 }
 
 export function DepositModal() {
   const { user, authenticated, login } = usePrivy();
-  const { address: wagmiAddress } = useAccount();
+  const { address: wagmiAddress, chainId: currentChainId } = useAccount();
+  const { switchChainAsync } = useSwitchChain();
   const [amount, setAmount] = useState("10");
   const [isDepositing, setIsDepositing] = useState(false);
   const [step, setStep] = useState<DepositStep>("idle");
   const [open, setOpen] = useState(false);
-  const [networkConfig, setNetworkConfig] = useState<NetworkConfig | null>(null);
+  const [networkConfig, setNetworkConfig] = useState<NetworkConfig | null>(
+    null,
+  );
   const { setBalance, setChannelId } = useUserStore();
 
   const isMainnet = networkConfig?.network === "mainnet";
+  const requiredChainId = networkConfig?.chainId;
+  const isWrongChain =
+    isMainnet && requiredChainId && currentChainId !== requiredChainId;
 
   const walletAddress =
     wagmiAddress ||
     user?.wallet?.address ||
     user?.linkedAccounts?.find((a) => a.type === "wallet")?.address;
+
+  const { data: usdcBalance, refetch: refetchBalance } = useReadContract({
+    address: networkConfig?.usdcAddress as `0x${string}` | undefined,
+    abi: erc20Abi,
+    functionName: "balanceOf",
+    args: walletAddress ? [walletAddress as `0x${string}`] : undefined,
+    query: {
+      enabled: isMainnet && !!walletAddress && !!networkConfig && !isWrongChain,
+    },
+  });
+
+  const formattedUsdcBalance =
+    usdcBalance !== undefined ? formatUnits(usdcBalance, USDC_DECIMALS) : null;
+
+  const parsedDepositAmount = Number(amount) || 0;
+  const hasInsufficientBalance =
+    isMainnet &&
+    formattedUsdcBalance !== null &&
+    parsedDepositAmount > Number(formattedUsdcBalance);
 
   const {
     writeContractAsync: writeApprove,
@@ -118,6 +140,22 @@ export function DepositModal() {
     }
   }, [depositConfirmed]);
 
+  async function handleSwitchChain(): Promise<boolean> {
+    if (!requiredChainId || currentChainId === requiredChainId) return true;
+
+    try {
+      setStep("switching");
+      await switchChainAsync({ chainId: requiredChainId });
+      return true;
+    } catch {
+      toast.error(
+        `Please switch to ${networkConfig?.chainName || "the correct network"}`,
+      );
+      setStep("idle");
+      return false;
+    }
+  }
+
   async function handleDeposit() {
     if (!authenticated) {
       login();
@@ -134,6 +172,11 @@ export function DepositModal() {
     resetDeposit();
 
     if (isMainnet) {
+      const switched = await handleSwitchChain();
+      if (!switched) {
+        setIsDepositing(false);
+        return;
+      }
       await handleMainnetDeposit();
     } else {
       await handleSandboxDeposit();
@@ -149,7 +192,7 @@ export function DepositModal() {
 
       await writeApprove({
         address: networkConfig.usdcAddress as `0x${string}`,
-        abi: ERC20_APPROVE_ABI,
+        abi: erc20Abi,
         functionName: "approve",
         args: [networkConfig.custodyAddress as `0x${string}`, parsedAmount],
       });
@@ -171,7 +214,11 @@ export function DepositModal() {
         address: networkConfig.custodyAddress as `0x${string}`,
         abi: CUSTODY_DEPOSIT_ABI,
         functionName: "deposit",
-        args: [networkConfig.usdcAddress as `0x${string}`, parsedAmount],
+        args: [
+          walletAddress as `0x${string}`,
+          networkConfig.usdcAddress as `0x${string}`,
+          parsedAmount,
+        ],
       });
     } catch {
       toast.error("Custody deposit rejected");
@@ -207,6 +254,7 @@ export function DepositModal() {
       setBalance(balanceUsdc);
       if (data.channelId) setChannelId(data.channelId);
       setStep("done");
+      refetchBalance();
 
       toast.success(`Deposited $${amount} USDC on-chain`);
       setOpen(false);
@@ -257,7 +305,11 @@ export function DepositModal() {
   }
 
   function getButtonLabel(): string {
+    if (isWrongChain) return `Switch to ${networkConfig?.chainName || "Base"}`;
+
     switch (step) {
+      case "switching":
+        return "Switching network...";
       case "approving":
         return "Approving USDC...";
       case "depositing":
@@ -276,11 +328,17 @@ export function DepositModal() {
   const stepDescriptions = isMainnet
     ? [
         { num: "1", text: "Approve USDC spending for custody contract" },
-        { num: "2", text: "Deposit USDC into Yellow custody contract on Base" },
+        {
+          num: "2",
+          text: "Deposit USDC into Yellow custody contract on Base",
+        },
         { num: "3", text: "Bet instantly — no gas fees per transaction" },
       ]
     : [
-        { num: "1", text: "USDC deposited into Yellow custody contract on Base" },
+        {
+          num: "1",
+          text: "USDC deposited into Yellow custody contract on Base",
+        },
         { num: "2", text: "State channel opened with ClearNode" },
         { num: "3", text: "Bet instantly — no gas fees per transaction" },
       ];
@@ -306,6 +364,13 @@ export function DepositModal() {
         </DialogHeader>
 
         <div className="space-y-4">
+          {isMainnet && isWrongChain && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800">
+              Your wallet is on the wrong network. Please switch to{" "}
+              {networkConfig?.chainName || "Base"} to deposit.
+            </div>
+          )}
+
           <div className="rounded-lg border border-pulse-black/10 bg-pulse-black/[0.02] p-4">
             <div className="mb-3 space-y-2 text-xs text-pulse-gray">
               {stepDescriptions.map((s) => (
@@ -320,9 +385,16 @@ export function DepositModal() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-medium text-pulse-gray">
-              Amount (USDC)
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-pulse-gray">
+                Amount (USDC)
+              </label>
+              {isMainnet && formattedUsdcBalance !== null && (
+                <span className="text-xs text-pulse-gray">
+                  Wallet: {Number(formattedUsdcBalance).toFixed(2)} USDC
+                </span>
+              )}
+            </div>
             <div className="flex gap-2">
               {["10", "50", "100"].map((a) => (
                 <button
@@ -345,13 +417,23 @@ export function DepositModal() {
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
             />
+            {hasInsufficientBalance && (
+              <p className="text-xs text-red-500">
+                Insufficient USDC balance in your wallet
+              </p>
+            )}
           </div>
         </div>
 
         <DialogFooter>
           <Button
             onClick={handleDeposit}
-            disabled={isDepositing || !amount || Number(amount) <= 0}
+            disabled={
+              isDepositing ||
+              !amount ||
+              parsedDepositAmount <= 0 ||
+              hasInsufficientBalance
+            }
             className="w-full bg-pulse-lime-400 font-bold text-pulse-black hover:bg-pulse-lime-500"
           >
             {getButtonLabel()}

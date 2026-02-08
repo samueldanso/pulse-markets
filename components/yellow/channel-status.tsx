@@ -5,7 +5,7 @@ import { useUserStore } from "@/stores/user-store";
 export function ChannelStatus() {
   const { channelId, balance } = useUserStore();
 
-  if (!channelId) {
+  if (!channelId && balance <= 0) {
     return (
       <div className="flex items-center gap-2 rounded-lg border border-pulse-black/10 px-3 py-1.5">
         <div className="size-2 rounded-full bg-pulse-black/20" />

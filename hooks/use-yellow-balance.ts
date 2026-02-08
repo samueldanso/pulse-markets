@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useUserStore } from "@/stores/user-store";
 
 const POLL_INTERVAL = 10_000;
+const USDC_DECIMALS = 6;
 
 export function useYellowBalance(address: string | undefined) {
   const { setBalance, setChannelId } = useUserStore();
@@ -20,11 +21,13 @@ export function useYellowBalance(address: string | undefined) {
         if (!res.ok) return;
 
         const data = await res.json();
-        const balanceUsdc = Number(data.balance) / 1_000_000;
+        const balanceUsdc = Number(data.balance) / 10 ** USDC_DECIMALS;
         setBalance(balanceUsdc);
 
         if (data.channelId) {
           setChannelId(data.channelId);
+        } else if (balanceUsdc > 0) {
+          setChannelId("custody");
         } else {
           setChannelId(null);
         }
