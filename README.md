@@ -6,7 +6,7 @@
 [![Yellow](https://img.shields.io/badge/Built%20on-Yellow%20Network-yellow)](https://yellow.org)
 [![ERC-8004](https://img.shields.io/badge/Settlement-ERC--8004%20AI%20Agents-blue)](https://eips.ethereum.org/EIPS/eip-8004)
 
-[🎥 **Video Demo**]() | [📊 **Pitch Deck**]() | [🌐 **Live Demo**](https://pulsemarkets-fi.vercel.app)
+[🎥 **Video Demo**](https://drive.google.com/file/d/1pVhx5qxWb4TSUBL-GMQ7V0RabxDwrhZ0/view?usp=sharing) | [📊 **Pitch Deck**](https://drive.google.com/file/d/1QASi5CHl0Gfi0ouF-V4ef2SYvQnuNsZV/view?usp=sharing) | [🌐 **Live Demo**](https://pulsemarkets-fi.vercel.app)
 
 ---
 
