@@ -31,7 +31,11 @@ agentRoutes.post("/a2a", async (c) => {
 
   if (body.jsonrpc !== "2.0") {
     return c.json(
-      { jsonrpc: "2.0", error: { code: -32600, message: "Invalid Request" }, id: body.id },
+      {
+        jsonrpc: "2.0",
+        error: { code: -32600, message: "Invalid Request" },
+        id: body.id,
+      },
       400,
     );
   }
@@ -65,10 +69,12 @@ async function handleMethod(
 async function handleMessageSend(
   params: Record<string, unknown>,
 ): Promise<unknown> {
-  const message = params.message as {
-    role: string;
-    parts: Array<{ type: string; text?: string }>;
-  } | undefined;
+  const message = params.message as
+    | {
+        role: string;
+        parts: Array<{ type: string; text?: string }>;
+      }
+    | undefined;
 
   if (!message?.parts) {
     throw new Error("Missing message.parts");
@@ -84,7 +90,11 @@ async function handleMessageSend(
     return handleSettleSkill(userText);
   }
 
-  if (userText.includes("market") || userText.includes("info") || userText.includes("status")) {
+  if (
+    userText.includes("market") ||
+    userText.includes("info") ||
+    userText.includes("status")
+  ) {
     return handleMarketInfoSkill(userText);
   }
 

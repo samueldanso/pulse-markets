@@ -105,7 +105,8 @@ export default function MarketDetailPage() {
   const searchParams = useSearchParams();
   const marketId = params.id as string;
   const sideParam = searchParams.get("side");
-  const preSelectedSide = sideParam === "UP" || sideParam === "DOWN" ? sideParam : undefined;
+  const preSelectedSide =
+    sideParam === "UP" || sideParam === "DOWN" ? sideParam : undefined;
 
   const [market, setMarket] = useState<MarketDetail | null>(null);
   const [pools, setPools] = useState<PoolStats | null>(null);
@@ -157,9 +158,10 @@ export default function MarketDetailPage() {
   const autoSettledRef = useRef(false);
 
   const total = Number(pools?.upPool ?? 0) + Number(pools?.downPool ?? 0);
-  const isPositive = total > 0
-    ? Number(pools?.upPool ?? 0) > Number(pools?.downPool ?? 0)
-    : changePercent > 0;
+  const isPositive =
+    total > 0
+      ? Number(pools?.upPool ?? 0) > Number(pools?.downPool ?? 0)
+      : changePercent > 0;
 
   async function handleSettle() {
     setIsSettling(true);
@@ -312,7 +314,8 @@ export default function MarketDetailPage() {
                 {formatUsdc(pools?.upPool ?? "0")}
               </p>
               <p className="text-xs text-pulse-gray">
-                {pools?.upParticipants ?? 0} bets · {(pools?.upPercentage ?? 50).toFixed(0)}%
+                {pools?.upParticipants ?? 0} bets ·{" "}
+                {(pools?.upPercentage ?? 50).toFixed(0)}%
               </p>
             </div>
             <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 dark:border-white/[0.08] dark:bg-white/[0.03]">
@@ -321,7 +324,8 @@ export default function MarketDetailPage() {
                 {formatUsdc(pools?.downPool ?? "0")}
               </p>
               <p className="text-xs text-pulse-gray">
-                {pools?.downParticipants ?? 0} bets · {(pools?.downPercentage ?? 50).toFixed(0)}%
+                {pools?.downParticipants ?? 0} bets ·{" "}
+                {(pools?.downPercentage ?? 50).toFixed(0)}%
               </p>
             </div>
             <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 dark:border-white/[0.08] dark:bg-white/[0.03]">

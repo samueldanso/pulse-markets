@@ -1,5 +1,5 @@
-import { base, sepolia } from "viem/chains";
 import { RPCProtocolVersion } from "@erc7824/nitrolite";
+import { base, sepolia } from "viem/chains";
 
 type YellowNetwork = "sandbox" | "mainnet";
 

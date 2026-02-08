@@ -38,24 +38,38 @@ export async function createChannel(
     token: asset as `0x${string}`,
   });
 
-  const response = (await client.sendMessage(createMessage)) as Record<string, unknown>;
+  const response = (await client.sendMessage(createMessage)) as Record<
+    string,
+    unknown
+  >;
 
-  const params = response.params as Record<string, unknown> | Record<string, unknown>[] | undefined;
+  const params = response.params as
+    | Record<string, unknown>
+    | Record<string, unknown>[]
+    | undefined;
   let channelId: string | undefined;
 
   if (Array.isArray(params)) {
-    channelId = (params[0] as Record<string, unknown>)?.channel_id as string | undefined;
+    channelId = (params[0] as Record<string, unknown>)?.channel_id as
+      | string
+      | undefined;
   } else if (params) {
     channelId = (params.channel_id ?? params.channelId) as string | undefined;
   }
 
   // Some ClearNode versions return channel_id at response top level
-  if (!channelId && typeof (response as Record<string, unknown>).channel_id === "string") {
+  if (
+    !channelId &&
+    typeof (response as Record<string, unknown>).channel_id === "string"
+  ) {
     channelId = (response as Record<string, unknown>).channel_id as string;
   }
 
   if (!channelId) {
-    console.error("[Yellow] Channel create response:", JSON.stringify(response));
+    console.error(
+      "[Yellow] Channel create response:",
+      JSON.stringify(response),
+    );
     throw new Error("Failed to create channel - no channel_id in response");
   }
 
@@ -151,9 +165,7 @@ export async function getChannels(
 
   // ClearNode may return params as array of channels or object with .channels key
   const params = response.params;
-  const channels = Array.isArray(params)
-    ? params
-    : params?.channels || [];
+  const channels = Array.isArray(params) ? params : params?.channels || [];
 
   return channels.map((ch: Record<string, unknown>) => ({
     channelId: ch.channel_id as string,

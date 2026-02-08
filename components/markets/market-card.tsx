@@ -84,9 +84,10 @@ export function MarketCard(props: MarketCardProps) {
   );
 
   const total = Number(props.upPool) + Number(props.downPool);
-  const isPositive = total > 0
-    ? Number(props.upPool) > Number(props.downPool)
-    : changePercent > 0;
+  const isPositive =
+    total > 0
+      ? Number(props.upPool) > Number(props.downPool)
+      : changePercent > 0;
 
   const iconSrc = TOPIC_ICONS[props.topic];
 
@@ -127,7 +128,9 @@ export function MarketCard(props: MarketCardProps) {
         </div>
         <div className="ml-3 text-right">
           <p className="font-mono text-lg font-bold text-pulse-black">
-            {latestValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            {latestValue.toLocaleString(undefined, {
+              maximumFractionDigits: 2,
+            })}
           </p>
           <p
             className={`text-xs font-semibold ${isPositive ? "text-pulse-up" : "text-pulse-down"}`}

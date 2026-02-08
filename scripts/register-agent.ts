@@ -89,7 +89,9 @@ async function main() {
   console.log("Next steps:");
   console.log(`  1. Add AGENT_ID=${agentId} to your .env file`);
   console.log("  2. Restart the dev server");
-  console.log("  3. POST /api/settle/:marketId will now include agent identity proof");
+  console.log(
+    "  3. POST /api/settle/:marketId will now include agent identity proof",
+  );
 }
 
 main().catch((error) => {

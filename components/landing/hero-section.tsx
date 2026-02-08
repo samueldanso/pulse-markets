@@ -55,7 +55,10 @@ export function HeroSection() {
         </div>
 
         <div className="h-12 pointer-events-none absolute bottom-28 left-1/2 z-30 -translate-x-1/2">
-          <Button asChild className="h-12 pointer-events-auto flex items-center gap-2.5 rounded-xl bg-pulse-black px-9 py-4 text-xs font-semibold text-white shadow-[0_20px_40px_-10px_rgba(76,29,149,0.3)] transition-all hover:bg-black/90">
+          <Button
+            asChild
+            className="h-12 pointer-events-auto flex items-center gap-2.5 rounded-xl bg-pulse-black px-9 py-4 text-xs font-semibold text-white shadow-[0_20px_40px_-10px_rgba(76,29,149,0.3)] transition-all hover:bg-black/90"
+          >
             <Link href="/markets">
               Start Trading <ArrowRight />
             </Link>

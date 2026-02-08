@@ -10,12 +10,12 @@ import { createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { base } from "viem/chains";
 import { getMarketById, MARKETS } from "@/data/markets";
-import { YellowClient } from "@/lib/yellow/client";
 import {
   allocateToChannel,
   deallocateFromChannel,
   getOrCreateChannel,
 } from "@/lib/yellow/channels";
+import { YellowClient } from "@/lib/yellow/client";
 import {
   CLEARNODE_URL,
   CUSTODY_ADDRESS,
@@ -64,7 +64,9 @@ class YellowService {
         for (const [key, value] of Object.entries(data)) {
           this.userStates.set(key, value as UserState);
         }
-        console.log(`[YellowService] Restored ${this.userStates.size} user states from disk`);
+        console.log(
+          `[YellowService] Restored ${this.userStates.size} user states from disk`,
+        );
       }
     } catch {
       console.warn("[YellowService] Failed to load persisted state");
@@ -133,7 +135,10 @@ class YellowService {
         console.warn(`[YellowService] Faucet request failed: ${res.status}`);
       }
     } catch (error) {
-      console.warn("[YellowService] Faucet unavailable:", error instanceof Error ? error.message : error);
+      console.warn(
+        "[YellowService] Faucet unavailable:",
+        error instanceof Error ? error.message : error,
+      );
     }
   }
 
@@ -358,7 +363,10 @@ class YellowService {
     if (BigInt(state.balance) > BigInt(0)) return;
 
     try {
-      const publicClient = createPublicClient({ chain: base, transport: http() });
+      const publicClient = createPublicClient({
+        chain: base,
+        transport: http(),
+      });
       const result = await publicClient.readContract({
         address: CUSTODY_ADDRESS,
         abi: [
@@ -381,10 +389,15 @@ class YellowService {
       if (onChainBalance > BigInt(0)) {
         state.balance = onChainBalance.toString();
         this.persistState();
-        console.log(`[YellowService] Synced custody balance for ${address}: ${state.balance}`);
+        console.log(
+          `[YellowService] Synced custody balance for ${address}: ${state.balance}`,
+        );
       }
     } catch (error) {
-      console.warn("[YellowService] Failed to sync custody balance:", error instanceof Error ? error.message : error);
+      console.warn(
+        "[YellowService] Failed to sync custody balance:",
+        error instanceof Error ? error.message : error,
+      );
     }
   }
 
@@ -406,7 +419,10 @@ class YellowService {
       state.channelId = channelId;
     }
 
-    await allocateToChannel(client, { channelId: channelId as `0x${string}`, amount });
+    await allocateToChannel(client, {
+      channelId: channelId as `0x${string}`,
+      amount,
+    });
 
     const prev = BigInt(state.balance);
     const added = BigInt(amount);

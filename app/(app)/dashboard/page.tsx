@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { usePrivy } from "@privy-io/react-auth";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -91,7 +91,10 @@ export default function DashboardPage() {
               <p className="mb-4 text-sm text-pulse-gray">
                 No positions yet. Place your first bet!
               </p>
-              <Button asChild className="bg-pulse-lime-400 text-pulse-black hover:bg-pulse-lime-500">
+              <Button
+                asChild
+                className="bg-pulse-lime-400 text-pulse-black hover:bg-pulse-lime-500"
+              >
                 <Link href="/markets">Browse Markets</Link>
               </Button>
             </CardContent>

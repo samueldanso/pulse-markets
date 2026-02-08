@@ -64,7 +64,12 @@ async function main() {
   const operatorAddress = account.address;
   let session;
   try {
-    session = await createMarketSession(client, "test-market-1", operatorAddress, "0x0000000000000000000000000000000000000001" as `0x${string}`);
+    session = await createMarketSession(
+      client,
+      "test-market-1",
+      operatorAddress,
+      "0x0000000000000000000000000000000000000001" as `0x${string}`,
+    );
     console.log(`Session ID: ${session.sessionId}`);
     console.log("PASS: Market session created\n");
   } catch (error) {

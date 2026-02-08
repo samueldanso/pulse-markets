@@ -1,9 +1,8 @@
 import { Hono } from "hono";
 import { createPublicClient, http } from "viem";
 import { base } from "viem/chains";
-
-import { yellowService } from "@/server/services/yellow-service";
 import { CUSTODY_ADDRESS, USDC_ADDRESS } from "@/lib/yellow/constants";
+import { yellowService } from "@/server/services/yellow-service";
 
 const CUSTODY_BALANCE_ABI = [
   {
@@ -124,7 +123,8 @@ yellowRoutes.get("/custody-balance", async (c) => {
 
     return c.json({ balance: balance.toString() });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : "Failed to read custody balance";
+    const msg =
+      error instanceof Error ? error.message : "Failed to read custody balance";
     return c.json({ error: msg }, 500);
   }
 });

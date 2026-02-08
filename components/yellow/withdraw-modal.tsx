@@ -226,9 +226,7 @@ export function WithdrawModal() {
       case "switching":
         return "Switching network...";
       case "withdrawing":
-        return isMainnet
-          ? "Withdrawing from custody..."
-          : "Closing channel...";
+        return isMainnet ? "Withdrawing from custody..." : "Closing channel...";
       case "confirming":
         return "Confirming...";
       default:

@@ -36,7 +36,8 @@ export function BetInterface({
 
   const isExpired = Date.now() > closesAt;
   const insufficientBalance = balance < Number(amount);
-  const canBet = status === "open" && !isExpired && authenticated && !insufficientBalance;
+  const canBet =
+    status === "open" && !isExpired && authenticated && !insufficientBalance;
 
   async function handleBet() {
     if (!selectedSide) {

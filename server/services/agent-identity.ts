@@ -82,10 +82,7 @@ class AgentIdentityService {
    * Build agent identity proof for settlement responses.
    * Includes on-chain identity reference + last reputation signal.
    */
-  async getAgentProof(
-    tag1: string,
-    tag2: string,
-  ): Promise<AgentProof | null> {
+  async getAgentProof(tag1: string, tag2: string): Promise<AgentProof | null> {
     if (!this.agentId || !this.operatorAddress) return null;
 
     // Agent ID format is "chainId:tokenId" (e.g. "8453:2373") — extract token ID for contract calls and URLs
@@ -142,8 +139,7 @@ class AgentIdentityService {
         args: [BigInt(tokenId)],
       });
       return (
-        (owner as string).toLowerCase() ===
-        this.operatorAddress?.toLowerCase()
+        (owner as string).toLowerCase() === this.operatorAddress?.toLowerCase()
       );
     } catch {
       return false;
